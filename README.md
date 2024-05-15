@@ -1,2 +1,1 @@
-# graphqy
-Web graphics-based language interpreter.
+graphics script
