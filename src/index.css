@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.code-highlight {
+	span.keyword {
+		color: red;
+	}
+
+	span.symbol {
+		color: blue;
+	}
+}
