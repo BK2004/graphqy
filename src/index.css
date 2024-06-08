@@ -2,12 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+* {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+pre {
+	counter-reset: line;
+}
+
+span.line-num::before {
+		counter-increment: line;
+		content: counter(line) "|";
+		display: absolute;
+		@apply top-0 px-1 opacity-30 border-r-2
+}
+
 .code-highlight {
 	span.keyword {
-		color: red;
+		@apply text-red-500
 	}
 
 	span.symbol {
-		color: blue;
+		@apply text-blue-500
+	}
+
+	span.string-literal {
+		@apply text-green-500
 	}
 }
