@@ -1,34 +1,35 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 
 const KEYWORDS = [
 	"let",
 	"const",
 	"while",
 	"do",
+	"end",
+	"repeat",
+	"until",
 	"if",
 	"else",
 	"elif",
-	"function"
+	"fn"
 ]
 
-const isEntity = (() => {
-	const textarea = document.createElement('textarea');
-	return (entity: string) => {textarea.innerHTML = entity; return textarea.value !== entity;}
-})();
+interface Props {
+	init?: string
+}
+
+const encodeString: (input: string) => string = (input: string) => {
+	return input.replaceAll('&', '&amp;');
+}
 
 const highlightString: (input: string) => string = (input: string) => {
-	return input.replaceAll(/(<div>.*?<\/div>|".*?"|&[a-zA-Z0-9]+;|[a-zA-Z][a-zA-Z0-9_]*|[0-9]+)/g, (str) => {
+	return input.replaceAll(/(<div>.*?<\/div>|".*?"|[a-zA-Z][a-zA-Z0-9_]*|[0-9]+)/g, (str) => {
 		if (/<div>.*?<\/div>/.test(str)) {
 			// Only highlight what is inside of divs
 			return "<div>" + highlightString(str.substring(5, str.length - 6)) + "</div>";
 		}
 		
-		if (str.match(/&[a-zA-Z0-9]+;/) !== null) {
-			return isEntity(str) ? str 
-				: highlightString(str[0]) 
-				+ highlightString(str.substring(1, str.length - 1))
-				+ highlightString(str.substring(str.length - 1));
-		} else if (!isNaN(Number(str))) {
+		if (!isNaN(Number(str))) {
 			// Matched string is a number literal
 			return `<span class="num-literal">${str}</span>`;
 		} else if (str.match(/^".*"$/) !== null) {
@@ -43,32 +44,44 @@ const highlightString: (input: string) => string = (input: string) => {
 	});
 }
 
-const CodeEditor = () => {
+const CodeEditor = ({ init }: Props) => {
 	const highlightedRef = useRef<HTMLDivElement>(null);
 
 	const onInput = (input: string) => {
 		if (!highlightedRef.current) return;
 
 		const highlightedLines = input.split("\n").map((str) => {
-			const h = highlightString(str);
+			const h = encodeString(highlightString(str));
 			return h;
 		});
 
 		highlightedRef.current.innerHTML = highlightedLines.map((v, i) => {
-			return `<span class="relative line-num">${v}</span>`;
-		}).join("<br>");
+			return `<span class="relative line-num block min-h-6">${v}</span>`;
+		}).join("");
 	}
 
-	return (<div className="w-full h-fit relative bg-gray-200">
-		<textarea className="appearance-none px-7 resize-none inline-block relative w-full overflow-y-auto break-words min-h-4 focus:border-none focus:outline-none bg-transparent text-transparent caret-black z-10"
+	useEffect(() => {
+		onInput(init || "");
+	}, [init])
+
+	return (<div className="min-w-full w-fit h-fit relative bg-gray-200">
+		<textarea className="appearance-none pl-7 pr-2 resize-none inline-block min-w-full relative text-nowrap overflow-y-auto focus:border-none focus:outline-none bg-transparent text-transparent caret-black z-10"
 			onInput={(e) => {
 				e.currentTarget.style.height = "1px";
 				e.currentTarget.style.height = (25 + e.currentTarget.scrollHeight) + "px";
 				onInput(e.currentTarget.value);
-			}}>
-		</textarea>
+				if (highlightedRef.current) {
+					highlightedRef.current.style.width = "1px";
+					e.currentTarget.style.width = highlightedRef.current.scrollWidth + "px";
+				}
+			}}
+			onKeyDown={(e) => {
+				if (e.key == "Tab") {
+					e.preventDefault();
+				}
+			}} />
 		<pre>
-			<div className="code-highlight absolute w-full h-full top-0 left-0 select-none" ref={highlightedRef}></div>
+			<div className="code-highlight pl-7 pr-2 py-0 absolute w-full h-full top-0 left-0 select-none" ref={highlightedRef}></div>
 		</pre>
 	</div>)
 }
