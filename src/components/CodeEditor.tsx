@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, type RefObject } from "react";
 
 const KEYWORDS = [
 	"let",
@@ -15,7 +15,8 @@ const KEYWORDS = [
 ]
 
 interface Props {
-	init?: string
+	init?: string,
+	inputRef: RefObject<HTMLTextAreaElement>,
 }
 
 const encodeString: (input: string) => string = (input: string) => {
@@ -44,7 +45,7 @@ const highlightString: (input: string) => string = (input: string) => {
 	});
 }
 
-const CodeEditor = ({ init }: Props) => {
+const CodeEditor = ({ init, inputRef }: Props) => {
 	const highlightedRef = useRef<HTMLDivElement>(null);
 
 	const onInput = (input: string) => {
@@ -64,8 +65,8 @@ const CodeEditor = ({ init }: Props) => {
 		onInput(init || "");
 	}, [init])
 
-	return (<div className="min-w-full w-fit h-fit relative bg-gray-200">
-		<textarea className="appearance-none pl-7 pr-2 resize-none inline-block min-w-full relative text-nowrap overflow-y-auto focus:border-none focus:outline-none bg-transparent text-transparent caret-black z-10"
+	return (<div className="min-w-full w-fit h-fit relative">
+		<textarea spellCheck="false" className="appearance-none pl-12 pr-2 resize-none inline-block min-w-full relative text-nowrap overflow-y-auto focus:border-none focus:outline-none bg-transparent text-transparent caret-black z-10"
 			onInput={(e) => {
 				e.currentTarget.style.height = "1px";
 				e.currentTarget.style.height = (25 + e.currentTarget.scrollHeight) + "px";
@@ -79,9 +80,10 @@ const CodeEditor = ({ init }: Props) => {
 				if (e.key == "Tab") {
 					e.preventDefault();
 				}
-			}} />
+			}} 
+			ref={inputRef} />
 		<pre>
-			<div className="code-highlight pl-7 pr-2 py-0 absolute w-full h-full top-0 left-0 select-none" ref={highlightedRef}></div>
+			<div className="code-highlight pl-12 pr-2 py-0 absolute w-full h-full top-0 left-0 select-none" ref={highlightedRef}></div>
 		</pre>
 	</div>)
 }
