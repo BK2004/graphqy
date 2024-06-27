@@ -1,20 +1,86 @@
-import { Token, Literal, TokenType, LiteralType } from "./tokens";
-import { Error, ErrorType } from "./error";
-import { symbolTokens } from './tokens';
+import { Token, Literal, TokenType, LiteralType, BinaryOpType, SymbolTokens, BinaryOpToken } from ".";
+import { Error, ErrorType } from "../error";
 
 type char = string
+type Err<T> = Error | T
 
-class Scanner {
+export class Scanner {
 	code: string;
 	putBacks: string[] = [];
 	curr: number = 0;
 	lineCount: number = 1;
 	currentColumn: number = 0;
+	tokens?: Token[];
 
 	constructor(code: string) {
 		this.code = code;
+	}
 
-		console.log(symbolTokens);
+	// scanTokens
+	// 	Scans all tokens in code
+	// 	@params:
+	// 	@returns:
+	// 		Error if there is a scanning error
+	scanTokens(): Error|undefined {
+		if (this.tokens) {
+			return;
+		}
+
+		this.tokens = [];
+
+		let curr: Err<Token | undefined>;
+		while (!curr || (curr as Token).tokenType !== TokenType.EOF) {
+			curr = this.scanNext();
+			if (curr instanceof Error) return curr;
+			this.tokens.push(curr);
+		}
+
+		// Reverse so first token is at back of array for O(1) removal
+		for (let i = 0; i < this.tokens.length/2; i++) {
+			const temp = this.tokens[this.tokens.length - i - 1];
+			this.tokens[this.tokens.length - i - 1] = this.tokens[i];
+			this.tokens[i] = temp;
+		}
+	}
+
+	// peek
+	// 	Peek at current token in tokens
+	//	Requires scanTokens()
+	// 	@params:
+	// 	@returns:
+	// 		Current token in tokens or EOF if no more tokens/tokens not scanned
+	peek(): Token {
+		return this.lookAhead(0);
+	}
+
+	// advance
+	// 	Advances one token forward
+	// 	Requires scanTokens()
+	// 	@params:
+	// 	@returns:
+	// 		Discarded token or EOF if no token to advance past/tokens not scanned
+	advance(): Token {
+		if (!this.tokens) {
+			return new Token(TokenType.EOF, this.lineCount, this.currentColumn);
+		}
+
+		return this.tokens!.pop() 
+			|| new Token(TokenType.EOF, this.lineCount, this.currentColumn);
+	}
+
+	// lookAhead
+	// 	Checks token 'n' ahead of current
+	// 	Requires scanTokens()
+	// 	@params:
+	// 		n - # ahead to look
+	// 	@returns:
+	// 		token 'n' ahead or EOF if it doesn't exist/tokens not scanned
+	lookAhead(n: number): Token {
+		if (!this.tokens) return new Token(TokenType.EOF, this.lineCount, this.currentColumn);
+
+		n = this.tokens!.length - n - 1;
+		if (n < 0) return new Token(TokenType.EOF, this.lineCount, this.currentColumn);
+		return this.tokens![n];
 	}
 
 	// putBack
@@ -83,12 +149,12 @@ class Scanner {
 	// 	@params:
 	// 	@returns:
 	// 		Next token in code, or 'EOF' if no more characters. Might error.
-	scanNext(): Token|Error {
+	scanNext(): Err<Token> {
 		// Skip whitespace before scanning a token
 		this.skipWhitespace();
 
 		const next = this.nextChar();
-		if (next === 'EOF') return new Token(TokenType.EOF);
+		if (next === 'EOF') return new Token(TokenType.EOF, this.lineCount, this.currentColumn);
 
 		// If starts with number, scan a number literal
 		if (next.match(/[0-9]/)) {
@@ -96,7 +162,7 @@ class Scanner {
 		}
 
 		// If starts with a symbol (e.g., +/-), scan a symbol token
-		if (symbolTokens.children.has(next)) {
+		if (SymbolTokens.children.has(next)) {
 			return this.scanSymbolToken(next);
 		}
 
@@ -109,13 +175,13 @@ class Scanner {
 	// 		c - first character in number
 	// 	@returns:
 	// 		Scanned literal number or error, if needed
-	scanNumberLiteral(c: char): Literal|Error {
+	scanNumberLiteral(c: char): Err<Literal> {
 		let res: number = 0;
 		let decimal = -1;
 		let i = 0;
 		while (c.match(/[0-9.]/)) {
 			if (c === '.') {
-				if (decimal > -1) return this.wrapError(new ErrorType.InvalidCharacter('.')); // TODO: Throw error for invalid character
+				if (decimal > -1) return this.wrapError(new ErrorType.InvalidCharacter('.'));
 				else {
 					decimal = i;
 				}
@@ -133,7 +199,7 @@ class Scanner {
 			res = res / Math.pow(10, i - decimal - 1);
 		}
 
-		return new Literal(LiteralType.Number, res);
+		return new Literal(LiteralType.Number, this.lineCount, this.currentColumn, res);
 	}
 
 	// scanSymbolToken
@@ -142,12 +208,12 @@ class Scanner {
 	// 		c - first character in token
 	// 	@returns:
 	// 		Scanned symbol token
-	scanSymbolToken(c: char): Token|Error {
-		let curr = symbolTokens.children.get(c);
+	scanSymbolToken(c: char): Err<Token> {
+		let curr = SymbolTokens.children.get(c);
 		let seen = c;
 		if (!curr) return this.wrapError(new ErrorType.UnknownSymbol(seen));
 
-		let lastValue: TokenType|undefined;
+		let lastValue: TokenType|BinaryOpType|undefined;
 		if (curr.value) lastValue = curr.value;
 
 		while (true) {
@@ -159,7 +225,10 @@ class Scanner {
 				if (!lastValue) {
 					return this.wrapError(new ErrorType.UnknownSymbol(seen))
 				}
-				return new Token(lastValue!);
+				if (Object.values(BinaryOpType).includes(lastValue as BinaryOpType))
+					return new BinaryOpToken(lastValue as BinaryOpType, this.lineCount, this.currentColumn);
+				else
+					return new Token(lastValue as TokenType, this.lineCount, this.currentColumn);
 			} else {
 				seen += c;
 				curr = curr?.children.get(c)!;
@@ -168,5 +237,3 @@ class Scanner {
 		}
 	}
 }
-
-export default Scanner;

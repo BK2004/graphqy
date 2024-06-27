@@ -1,9 +1,8 @@
 import { useRef } from 'react';
-import Scanner from './interpreter/scanner';
-import { Token } from './interpreter/tokens';
+import { Scanner, Token } from './interpreter/scanning'
 import CodeEditor from './components/CodeEditor';
 import ControlBar from './components/ControlBar';
-import { Error } from './interpreter/error';
+import { Parser } from './interpreter/parsing';
 
 function App() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -12,16 +11,15 @@ function App() {
 		<div className="App h-screen overflow-y-auto flex flex-col justify-start bg-gray-100">
 			<ControlBar onPlay={() => {
 					const scanner = new Scanner(inputRef.current!.value);
+					const err = scanner.scanTokens();
 
-					let token = scanner.scanNext();
-					while (token instanceof Token && token.tokenType !== "EOF") {
-						console.log(token);
-						token = scanner.scanNext();
+					if (err) {
+						console.log(err.fmtString());
+						return;
 					}
-					
-					if (token instanceof Error) {
-						console.log(token.fmtString());
-					}
+
+					const parser = new Parser(scanner);
+					console.log(parser.parseExpression(0));
 				}} onPause={() => console.log(inputRef.current?.value)} />
 			<CodeEditor inputRef={inputRef} />
 		</div>

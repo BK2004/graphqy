@@ -1,4 +1,4 @@
-import { TokenType } from "./tokens";
+import { TokenType } from "./scanning";
 
 type char = string;
 
@@ -37,6 +37,11 @@ export const ErrorType = {
 	UnknownSymbol: class extends Error {
 		constructor(received: string) {
 			super("UNKNOWN_SYMBOL", `Received '${received}'`)
+		}
+	},
+	UnexpectedToken: class extends Error {
+		constructor(received: TokenType, expected: TokenType[]) {
+			super("UNEXP_TOKEN", `Received '${received},' but expected ${expected.length > 1 ? `one of: ${expected.join(", ")}` : expected.join("")}`)
 		}
 	}
 }
