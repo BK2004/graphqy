@@ -1,4 +1,4 @@
-import { Token, Literal, TokenType, LiteralType, BinaryOpType, SymbolTokens, BinaryOpToken } from ".";
+import { Token, Literal, TokenType, LiteralType, SymbolTokens } from ".";
 import { Error, ErrorType } from "../error";
 
 type char = string
@@ -213,7 +213,7 @@ export class Scanner {
 		let seen = c;
 		if (!curr) return this.wrapError(new ErrorType.UnknownSymbol(seen));
 
-		let lastValue: TokenType|BinaryOpType|undefined;
+		let lastValue: TokenType|undefined;
 		if (curr.value) lastValue = curr.value;
 
 		while (true) {
@@ -225,10 +225,8 @@ export class Scanner {
 				if (!lastValue) {
 					return this.wrapError(new ErrorType.UnknownSymbol(seen))
 				}
-				if (Object.values(BinaryOpType).includes(lastValue as BinaryOpType))
-					return new BinaryOpToken(lastValue as BinaryOpType, this.lineCount, this.currentColumn);
-				else
-					return new Token(lastValue as TokenType, this.lineCount, this.currentColumn);
+				
+				return new Token(lastValue, this.lineCount, this.currentColumn);
 			} else {
 				seen += c;
 				curr = curr?.children.get(c)!;

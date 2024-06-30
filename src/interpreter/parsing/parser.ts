@@ -1,4 +1,4 @@
-import { Scanner, Token, TokenType, Literal, LiteralType, BinaryOpToken, BinaryOpType, OPERATOR_PRECEDENCE } from "../scanning";
+import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE } from "../scanning";
 import { Error, ErrorType } from "../error";
 import { ASTLiteral, BinaryOp, ASTNode } from ".";
 
@@ -47,7 +47,7 @@ export class Parser {
 		
 		let right: Err<ASTNode>;
 		let token: Token = this.currentToken;
-		if (!(token instanceof BinaryOpToken)) return left;
+		if (!this.getPrecedence(token)) return left;
 
 		let exprFlags = [TokenType.EOF, TokenType.Semicolon]
 
@@ -60,13 +60,13 @@ export class Parser {
 			if (right instanceof Error) return right;
 
 			// Join left and right with binary op
-			left = new BinaryOp(token.binaryOp, left, right as ASTNode)
+			left = new BinaryOp(token.tokenType, left, right as ASTNode)
 
 			// Expression flag, return result
 			if (this.currentToken.expect(exprFlags)) return left;
 
 			token = this.currentToken;
-			if (!(token instanceof BinaryOpToken)) return left;
+			if (!this.getPrecedence(token)) return left;
 		}
 
 		return left;
@@ -92,9 +92,7 @@ export class Parser {
 	// 	@returns:
 	// 		precedence of token or undefined if it isn't an operator
 	getPrecedence(token: Token): number | undefined {
-		if (token instanceof BinaryOpToken) {
-			if (token.binaryOp in OPERATOR_PRECEDENCE) return OPERATOR_PRECEDENCE[token.binaryOp];
-		} else if (token.tokenType in OPERATOR_PRECEDENCE) {
+		if (token.tokenType in OPERATOR_PRECEDENCE) {
 			return OPERATOR_PRECEDENCE[token.tokenType];
 		}
 	}

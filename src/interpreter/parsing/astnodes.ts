@@ -1,4 +1,4 @@
-import { BinaryOpType, LiteralType, Token } from "../scanning";
+import { LiteralType, Token, TokenType } from "../scanning";
 
 export enum ASTNodeType {
 	Literal,
@@ -26,13 +26,13 @@ export class ASTLiteral extends ASTNode {
 }
 
 export class BinaryOp extends ASTNode {
-	op: BinaryOpType;
 	children: [ASTNode, ASTNode];
+	op: TokenType;
 
-	constructor(op: BinaryOpType, lchild: ASTNode, rchild: ASTNode) {
+	constructor(op: TokenType, lchild: ASTNode, rchild: ASTNode) {
 		super(ASTNodeType.BinaryOp);
 
-		this.op = op;
 		this.children = [lchild, rchild];
+		this.op = op;
 	}
 }

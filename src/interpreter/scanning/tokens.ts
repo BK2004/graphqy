@@ -4,19 +4,15 @@ export enum TokenType {
 	Literal = "Literal",
 	EOF = "EOF",
 	Semicolon = ";",
-	BinaryOpType = "BinaryOp",
+	Plus = "+",
+	Minus = "-",
+	Asterisk = "*",
+	Slash = "/",
 }
 
 export enum LiteralType {
 	Number = "Number",
 	Identifier = "Identifier",
-}
-
-export enum BinaryOpType {
-	Plus = "+",
-	Minus = "-",
-	Asterisk = "*",
-	Slash = "/",
 }
 
 export class Token {
@@ -43,16 +39,6 @@ export class Token {
 	}
 }
 
-export class BinaryOpToken extends Token {
-	binaryOp: BinaryOpType;
-
-	constructor(binaryOp: BinaryOpType, line: number, column: number) {
-		super(TokenType.BinaryOpType, line, column);
-
-		this.binaryOp = binaryOp;
-	}
-}
-
 export class Literal extends Token {
 	literalType: LiteralType;
 
@@ -63,17 +49,17 @@ export class Literal extends Token {
 }
 
 export const OPERATOR_PRECEDENCE: Record<string, number> = {
-	[BinaryOpType.Plus]: 8,
-	[BinaryOpType.Minus]: 8,
-	[BinaryOpType.Asterisk]: 9,
-	[BinaryOpType.Slash]: 9,
+	[TokenType.Plus]: 8,
+	[TokenType.Minus]: 8,
+	[TokenType.Asterisk]: 9,
+	[TokenType.Slash]: 9,
 };
 
-const SYMBOL_TOKENS: [string, TokenType|BinaryOpType][] = [
-	['+', BinaryOpType.Plus],
-	['-', BinaryOpType.Minus],
-	['*', BinaryOpType.Asterisk],
-	['/', BinaryOpType.Slash],
+const SYMBOL_TOKENS: [string, TokenType][] = [
+	['+', TokenType.Plus],
+	['-', TokenType.Minus],
+	['*', TokenType.Asterisk],
+	['/', TokenType.Slash],
 	[';', TokenType.Semicolon],
 ]
 
