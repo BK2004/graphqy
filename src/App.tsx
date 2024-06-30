@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Scanner, Token } from './interpreter/scanning'
 import CodeEditor from './components/CodeEditor';
 import ControlBar from './components/ControlBar';
-import { Parser } from './interpreter/parsing';
+import { ASTNode, Parser, printAST } from './interpreter/parsing';
 
 function App() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -19,7 +19,12 @@ function App() {
 					}
 
 					const parser = new Parser(scanner);
-					console.log(parser.parseExpression(0));
+					const res = parser.parseExpression(0);
+					if (res instanceof ASTNode) {
+						printAST(res as ASTNode);
+					} else {
+						console.log(res);
+					}
 				}} onPause={() => console.log(inputRef.current?.value)} />
 			<CodeEditor inputRef={inputRef} />
 		</div>

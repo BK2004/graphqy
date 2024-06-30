@@ -75,8 +75,6 @@ export class Parser {
 		let token: Token = this.currentToken;
 		if (!this.getPrecedence(token)) return left;
 
-		let exprFlags = [TokenType.EOF, TokenType.Semicolon]
-
 		while (this.getPrecedence(token) && this.getPrecedence(token)! > prev) {
 			this.next();
 			right = this.parseExpression(this.getPrecedence(token)!);
@@ -102,7 +100,7 @@ export class Parser {
 			return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.Literal]));
 		
 		// current token is a literal, treat it as such
-		return new ASTLiteral((this.previous() as Literal).literalType, this.next().value!)
+		return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)
 	}
 
 	// getPrecedence
