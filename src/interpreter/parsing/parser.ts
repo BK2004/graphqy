@@ -1,4 +1,4 @@
-import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE } from "../scanning";
+import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
 import { ASTLiteral, BinaryOp, ASTNode } from ".";
 
@@ -54,6 +54,12 @@ export class Parser {
 		return false;
 	}
 
+	// test
+	// 	Tests for match between current token and token types. Nothing is consumed
+	test(...types: TokenType[]): boolean {
+		return types.includes(this.currentToken.tokenType);
+	}
+
 	// previous
 	//	Gets previous token
 	// 	@params:
@@ -70,12 +76,15 @@ export class Parser {
 	parseExpression(prev: number): Err<ASTNode> {
 		let left = this.parseTerminalNode();
 		if (left instanceof Error) return left;
+
+		const exprFlags = [TokenType.EOF, TokenType.Semicolon, TokenType.RightParen]
+		if (this.test(...exprFlags)) return left;
 		
 		let right: Err<ASTNode>;
 		let token: Token = this.currentToken;
 		if (!this.getPrecedence(token)) return left;
 
-		while (this.getPrecedence(token) && this.getPrecedence(token)! > prev) {
+		while (this.getPrecedence(token) && ((this.getPrecedence(token)! > prev) || (this.getPrecedence(token)! == prev && this.isRLAssociative(token)))) {
 			this.next();
 			right = this.parseExpression(this.getPrecedence(token)!);
 			if (right instanceof Error) return right;
@@ -83,6 +92,8 @@ export class Parser {
 			// Join left and right with binary op
 			left = new BinaryOp(token.tokenType, left, right as ASTNode)
 
+			if (this.test(...exprFlags)) return left;
+			
 			token = this.currentToken;
 			if (!this.getPrecedence(token)) return left;
 		}
@@ -96,11 +107,23 @@ export class Parser {
 	// 	@returns:
 	// 		Terminal node if it is current token, otherwise error
 	parseTerminalNode(): Err<ASTNode> {
-		if (!this.match(TokenType.Literal))
+		if (!this.match(TokenType.Literal, TokenType.LeftParen))
 			return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.Literal]));
 		
-		// current token is a literal, treat it as such
-		return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)
+		switch (this.previous().tokenType) {
+			case TokenType.LeftParen:
+				const res = this.parseExpression(0);
+				if (res instanceof Error) return res;
+
+				// If expression isn't ended by a right paren, error
+				if (!this.match(TokenType.RightParen))
+					return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
+
+				return res;
+			default:
+				// current token is a literal, treat it as such
+				return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)
+		}
 	}
 
 	// getPrecedence
@@ -113,6 +136,16 @@ export class Parser {
 		if (token.tokenType in OPERATOR_PRECEDENCE) {
 			return OPERATOR_PRECEDENCE[token.tokenType];
 		}
+	}
+
+	// isRLAssociative
+	// 	Gets whether a token is right-to-left associative
+	// 	@params:
+	// 		token - Token to check
+	// 	@returns:
+	// 		Whether token is RL associative
+	isRLAssociative(token: Token): boolean {
+		return token.tokenType in RL_ASSOCIATIVE_TOKENS;
 	}
 
 	// wrapError

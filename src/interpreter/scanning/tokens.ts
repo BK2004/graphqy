@@ -8,10 +8,15 @@ export enum TokenType {
 	Minus = "-",
 	Asterisk = "*",
 	Slash = "/",
+	LeftParen = "(",
+	RightParen = ")",
+	Asterisk2 = "**",
 }
 
 export enum LiteralType {
 	Number = "Number",
+	String = "String",
+	Boolean = "Boolean",
 	Identifier = "Identifier",
 }
 
@@ -19,9 +24,9 @@ export class Token {
 	tokenType: TokenType;
 	line: number;
 	column: number;
-	value?: string|number;
+	value?: string|number|boolean;
 
-	constructor(tokenType: TokenType, line: number, column: number, value?: string|number) {
+	constructor(tokenType: TokenType, line: number, column: number, value?: string|number|boolean) {
 		this.tokenType = tokenType;
 		this.line = line;
 		this.column = column;
@@ -43,6 +48,7 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
 	[TokenType.Minus]: 8,
 	[TokenType.Asterisk]: 9,
 	[TokenType.Slash]: 9,
+	[TokenType.Asterisk2]: 13,
 };
 
 const SYMBOL_TOKENS: [string, TokenType][] = [
@@ -51,6 +57,13 @@ const SYMBOL_TOKENS: [string, TokenType][] = [
 	['*', TokenType.Asterisk],
 	['/', TokenType.Slash],
 	[';', TokenType.Semicolon],
+	['(', TokenType.LeftParen],
+	[')', TokenType.RightParen],
+	['**', TokenType.Asterisk2],
 ]
+
+export const RL_ASSOCIATIVE_TOKENS = {
+	[TokenType.Asterisk2]: true,
+}
 
 export const SymbolTokens = buildTrie(SYMBOL_TOKENS);
