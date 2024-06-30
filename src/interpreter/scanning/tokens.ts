@@ -27,16 +27,6 @@ export class Token {
 		this.column = column;
 		this.value = value;
 	}
-
-	// expect
-	// 	Test whether tokenType matches expected
-	// 	@params:
-	// 		expected - list of expected types
-	// 	@returns:
-	//		Whether tokenType matches any of the expected types
-	expect(expected: TokenType[]): boolean {
-		return expected.some(t => t === this.tokenType);
-	}
 }
 
 export class Literal extends Token {

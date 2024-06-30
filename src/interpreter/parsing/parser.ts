@@ -7,11 +7,13 @@ type Err<T> = Error | T
 export class Parser {
 	scanner: Scanner;
 	currentToken: Token;
+	prevToken: Token;
 	error?: Error;
 
 	constructor(scanner: Scanner) {
 		this.scanner = scanner;
 		this.currentToken = new Token(TokenType.EOF, 0, 0);
+		this.prevToken = new Token(TokenType.EOF, 0, 0);
 
 		const err = this.scanner.scanTokens();
 		if (err) this.error = err;
@@ -33,8 +35,32 @@ export class Parser {
 	// 	@returns:
 	// 		Current token
 	next(): Token {
+		this.prevToken = this.currentToken;
 		this.currentToken = this.scanner.lookAhead(1);
 		return this.scanner.advance();
+	}
+
+	// match
+	//	Checks for match between current token and given token types. If there is a match, current token is consumed, otherwise nothing happens
+	// 	@params:
+	// 		types - Types of tokens to match
+	// 	@returns:
+	// 		Whether there was a match
+	match(...types: TokenType[]): boolean {
+		if (types.includes(this.currentToken.tokenType)) {
+			this.next();
+			return true;
+		}
+		return false;
+	}
+
+	// previous
+	//	Gets previous token
+	// 	@params:
+	// 	@returns:
+	// 		Previous token, or EOF if there is none
+	previous(): Token {
+		return this.prevToken;
 	}
 
 	// parseExpression
@@ -51,9 +77,6 @@ export class Parser {
 
 		let exprFlags = [TokenType.EOF, TokenType.Semicolon]
 
-		// Expression is only a terminal node
-		if (token.expect(exprFlags)) return left;
-
 		while (this.getPrecedence(token) && this.getPrecedence(token)! > prev) {
 			this.next();
 			right = this.parseExpression(this.getPrecedence(token)!);
@@ -61,9 +84,6 @@ export class Parser {
 
 			// Join left and right with binary op
 			left = new BinaryOp(token.tokenType, left, right as ASTNode)
-
-			// Expression flag, return result
-			if (this.currentToken.expect(exprFlags)) return left;
 
 			token = this.currentToken;
 			if (!this.getPrecedence(token)) return left;
@@ -78,11 +98,11 @@ export class Parser {
 	// 	@returns:
 	// 		Terminal node if it is current token, otherwise error
 	parseTerminalNode(): Err<ASTNode> {
-		if (!this.currentToken.expect([TokenType.Literal]))
+		if (!this.match(TokenType.Literal))
 			return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.Literal]));
 		
 		// current token is a literal, treat it as such
-		return new ASTLiteral((this.currentToken as Literal).literalType, this.next().value!)
+		return new ASTLiteral((this.previous() as Literal).literalType, this.next().value!)
 	}
 
 	// getPrecedence
