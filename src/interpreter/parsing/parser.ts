@@ -1,6 +1,6 @@
-import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS } from "../scanning";
+import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp } from ".";
 
 type Err<T> = Error | T
 
@@ -107,19 +107,34 @@ export class Parser {
 	// 	@returns:
 	// 		Terminal node if it is current token, otherwise error
 	parseTerminalNode(): Err<ASTNode> {
-		if (!this.match(TokenType.Literal, TokenType.LeftParen))
-			return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.Literal]));
+		if (!(this.currentToken.tokenType in UNARY_TOKENS) && !this.match(TokenType.Literal, TokenType.LeftParen, TokenType.True, TokenType.False))
+			return this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
+
+		// If a unary operator, parse terminal node to the right
+		if (this.currentToken.tokenType in UNARY_TOKENS) {
+			const tokenType = this.next().tokenType;
+			const res = this.parseTerminalNode();
+			if (res instanceof Error) return res;
+
+			return new UnaryOp(tokenType, res);
+		}
 		
 		switch (this.previous().tokenType) {
 			case TokenType.LeftParen:
 				const res = this.parseExpression(0);
 				if (res instanceof Error) return res;
+				console.log(this.currentToken);
 
 				// If expression isn't ended by a right paren, error
 				if (!this.match(TokenType.RightParen))
 					return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
+				console.log(this.currentToken);
 
 				return res;
+			case TokenType.True:
+				return new ASTLiteral(LiteralType.Boolean, true);
+			case TokenType.False:
+				return new ASTLiteral(LiteralType.Boolean, false);
 			default:
 				// current token is a literal, treat it as such
 				return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)

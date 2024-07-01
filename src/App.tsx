@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Scanner } from './interpreter/scanning'
 import CodeEditor from './components/CodeEditor';
 import ControlBar from './components/ControlBar';
-import { Parser } from './interpreter/parsing';
+import { ASTNode, Parser, printAST } from './interpreter/parsing';
 import { Evaluator } from './interpreter/eval';
 
 function App() {

@@ -1,4 +1,4 @@
-import { Token, Literal, TokenType, LiteralType, SymbolTokens } from ".";
+import { Token, Literal, TokenType, LiteralType, SymbolTokens, KeywordTokens } from ".";
 import { Error, ErrorType } from "../error";
 
 type char = string
@@ -161,6 +161,16 @@ export class Scanner {
 			return this.scanNumberLiteral(next);
 		}
 
+		// If starts with an alphabetic char, it is either a keyword token or an identifier
+		if (next.match(/[a-zA-Z]/)) {
+			return this.scanKeywordOrIdentifier(next);
+		}
+
+		// If starts with a double quote or a single quote, scan a string
+		if (next.match(/['"]/)) {
+			return this.scanString(next);
+		}
+
 		// If starts with a symbol (e.g., +/-), scan a symbol token
 		if (SymbolTokens.children.has(next)) {
 			return this.scanSymbolToken(next);
@@ -233,5 +243,92 @@ export class Scanner {
 				if (curr.value) lastValue = curr.value!;
 			}
 		}
+	}
+
+	// scanKeywordOrIdentifier
+	// 	Scans a keyword token or an identifier
+	// 	@params:
+	// 		c - first character in token
+	// 	@returns:
+	// 		keyword if it matches to one, else an identifier
+	scanKeywordOrIdentifier(c: char): Token {
+		let res: string = c;
+
+		c = this.nextChar();
+		while (c.match(/[a-zA-Z0-9_]/) && c !== "EOF") {
+			res += c;
+			c = this.nextChar();
+		}
+		
+		if (c !== "EOF")
+			this.putBack(c);
+		
+		let curr = KeywordTokens;
+		for (let i = 0; i < res.length; i++) {
+			if (!curr.children.has(res[i])) {
+				return new Literal(LiteralType.Identifier, this.lineCount, this.currentColumn, res);
+			} else {
+				curr = curr.children.get(res[i])!;
+			}
+		}
+
+		// If it escapes loop and curr has a value, it is a keyword token
+		if (curr.value) {
+			return new Token(curr.value!, this.lineCount, this.currentColumn);
+		} else {
+			return new Literal(LiteralType.Identifier, this.lineCount, this.currentColumn, res);
+		}
+	}
+
+	// scanString
+	// 	Scans string, consuming characters until it comes across close
+	// 	@params:
+	// 		close - what to end string with (' or ")
+	// 	@returns:
+	// 		scanned string, or error
+	scanString(close: char): Err<Token> {
+		let res = "";
+		let c: char = this.nextChar();
+
+		while (c !== close && c !== "EOF") {
+			// If c is start of escape sequence, scan it
+			if (c === "\\") {
+				c = this.nextChar()
+				switch (c) {
+					case '\\':
+						res += "\\";
+						break;
+					case 'n':
+						res += "\n";
+						break;
+					case 't':
+						res += "\t";
+						break;
+					case '\'':
+						res += "\'";
+						break;
+					case '"':
+						res += "\"";
+						break;
+					case '\n':
+						// allow multiline strings
+						break;
+					case ' ':
+						break;
+					default:
+						return this.wrapError(new ErrorType.UnknownEscape(c));
+				}
+			} else {
+				res += c;
+			}
+
+			c = this.nextChar();
+		}
+
+		if (c === "EOF") {
+			return this.wrapError(new ErrorType.UnexpectedToken(TokenType.EOF, [close]))
+		}
+
+		return new Literal(LiteralType.String, this.lineCount, this.currentColumn, res);
 	}
 }

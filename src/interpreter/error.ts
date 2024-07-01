@@ -40,8 +40,18 @@ export const ErrorType = {
 		}
 	},
 	UnexpectedToken: class extends Error {
-		constructor(received: TokenType, expected: TokenType[]) {
+		constructor(received: TokenType, expected: string[]) {
 			super("UNEXP_TOKEN", `Received '${received},' but expected ${expected.length > 1 ? `one of: ${expected.join(", ")}` : expected.join("")}`)
+		}
+	},
+	ExpectedTerminal: class extends Error {
+		constructor(received: TokenType) {
+			super("EXP_TERM", `Received '${received}' but expected a terminal value`)
+		}
+	},
+	UnknownEscape: class extends Error {
+		constructor(received: char) {
+			super("UNKKNOWN_ESCAPE", `Unknown escape sequence '\\${received}'`)
 		}
 	}
 }

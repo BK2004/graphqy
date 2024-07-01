@@ -11,6 +11,9 @@ export enum TokenType {
 	LeftParen = "(",
 	RightParen = ")",
 	Asterisk2 = "**",
+	Bang = "!",
+	True = "true",
+	False = "false",
 }
 
 export enum LiteralType {
@@ -60,10 +63,22 @@ const SYMBOL_TOKENS: [string, TokenType][] = [
 	['(', TokenType.LeftParen],
 	[')', TokenType.RightParen],
 	['**', TokenType.Asterisk2],
+	['!', TokenType.Bang],
+]
+
+const KEYWORD_TOKENS: [string, TokenType][] = [
+	['true', TokenType.True],
+	['false', TokenType.False]
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {
 	[TokenType.Asterisk2]: true,
 }
 
+export const UNARY_TOKENS = {
+	[TokenType.Minus]: true,
+	[TokenType.Bang]: true
+}
+
 export const SymbolTokens = buildTrie(SYMBOL_TOKENS);
+export const KeywordTokens = buildTrie(KEYWORD_TOKENS);
