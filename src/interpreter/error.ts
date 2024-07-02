@@ -53,5 +53,10 @@ export const ErrorType = {
 		constructor(received: char) {
 			super("UNKKNOWN_ESCAPE", `Unknown escape sequence '\\${received}'`)
 		}
+	},
+	UnexpectedType: class extends Error {
+		constructor(received: string, expected: string) {
+			super("UNEXP_TYPE", `Received a ${received} but expected ${expected}`)
+		}
 	}
 }

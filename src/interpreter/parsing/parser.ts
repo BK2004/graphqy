@@ -84,7 +84,7 @@ export class Parser {
 		let token: Token = this.currentToken;
 		if (!this.getPrecedence(token)) return left;
 
-		while (this.getPrecedence(token) && ((this.getPrecedence(token)! > prev) || (this.getPrecedence(token)! == prev && this.isRLAssociative(token)))) {
+		while (this.getPrecedence(token) && ((this.getPrecedence(token)! > prev) || (this.getPrecedence(token)! === prev && this.isRLAssociative(token)))) {
 			this.next();
 			right = this.parseExpression(this.getPrecedence(token)!);
 			if (right instanceof Error) return right;
@@ -123,12 +123,10 @@ export class Parser {
 			case TokenType.LeftParen:
 				const res = this.parseExpression(0);
 				if (res instanceof Error) return res;
-				console.log(this.currentToken);
 
 				// If expression isn't ended by a right paren, error
 				if (!this.match(TokenType.RightParen))
 					return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
-				console.log(this.currentToken);
 
 				return res;
 			case TokenType.True:
