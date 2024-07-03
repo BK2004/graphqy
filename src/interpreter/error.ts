@@ -58,5 +58,15 @@ export const ErrorType = {
 		constructor(received: string, expected: string) {
 			super("UNEXP_TYPE", `Received a ${received} but expected ${expected}`)
 		}
+	},
+	DivideByZero: class extends Error {
+		constructor() {
+			super("DIV_BY_ZERO", `Attempted to divide by zero`)
+		}
+	},
+	BadComparison: class extends Error {
+		constructor(leftType: string, rightType: string) {
+			super("BAD_CMP", `Can't compare ${leftType} and ${rightType}`)
+		}
 	}
 }

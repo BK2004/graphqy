@@ -14,8 +14,8 @@ const astToString = (ast: ASTNode): string => {
 		case ASTNodeType.Literal:
 			return (ast as ASTLiteral).value.toString();
 		case ASTNodeType.BinaryOp:
-			return `(${astToString((ast as BinaryOp).children[0])} ${(ast as BinaryOp).op} ${astToString((ast as BinaryOp).children[1])})`;
+			return `(${astToString((ast as BinaryOp).children[0])} ${(ast as BinaryOp).op.tokenType} ${astToString((ast as BinaryOp).children[1])})`;
 		case ASTNodeType.UnaryOp:
-			return `(${(ast as UnaryOp).op}${astToString((ast as UnaryOp).child)})`;
+			return `(${(ast as UnaryOp).op.tokenType}${astToString((ast as UnaryOp).child)})`;
 	}
 }

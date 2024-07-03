@@ -1,17 +1,9 @@
 import { useRef, useEffect, type RefObject } from "react";
 
 const KEYWORDS = [
-	"let",
-	"const",
-	"while",
-	"do",
-	"end",
-	"repeat",
-	"until",
-	"if",
-	"else",
-	"elif",
-	"fn"
+	"and",
+	"or",
+	"not"
 ]
 
 interface Props {

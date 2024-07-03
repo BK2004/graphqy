@@ -21,7 +21,7 @@ function App() {
 
 					const parser = new Parser(scanner);
 					const evaluator = new Evaluator(parser);
-					const res = evaluator.next();
+					const res = evaluator.interpret();
 					console.log(res);
 				}} onPause={() => console.log(inputRef.current?.value)} />
 			<CodeEditor inputRef={inputRef} />

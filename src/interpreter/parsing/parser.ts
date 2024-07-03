@@ -90,7 +90,7 @@ export class Parser {
 			if (right instanceof Error) return right;
 
 			// Join left and right with binary op
-			left = new BinaryOp(token.tokenType, left, right as ASTNode)
+			left = new BinaryOp(token, left, right as ASTNode)
 
 			if (this.test(...exprFlags)) return left;
 			
@@ -107,35 +107,36 @@ export class Parser {
 	// 	@returns:
 	// 		Terminal node if it is current token, otherwise error
 	parseTerminalNode(): Err<ASTNode> {
-		if (!(this.currentToken.tokenType in UNARY_TOKENS) && !this.match(TokenType.Literal, TokenType.LeftParen, TokenType.True, TokenType.False))
-			return this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
-
+		if (this.match(TokenType.Literal, TokenType.LeftParen, TokenType.True, TokenType.False)) {
+			switch (this.previous().tokenType) {
+				case TokenType.LeftParen:
+					const res = this.parseExpression(0);
+					if (res instanceof Error) return res;
+	
+					// If expression isn't ended by a right paren, error
+					if (!this.match(TokenType.RightParen))
+						return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
+	
+					return res;
+				case TokenType.True:
+					return new ASTLiteral(LiteralType.Boolean, true);
+				case TokenType.False:
+					return new ASTLiteral(LiteralType.Boolean, false);
+				default:
+					// current token is a literal, treat it as such
+					return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)
+			}
+		}
 		// If a unary operator, parse terminal node to the right
-		if (this.currentToken.tokenType in UNARY_TOKENS) {
-			const tokenType = this.next().tokenType;
+		else if (this.currentToken.tokenType in UNARY_TOKENS) {
+			const token = this.next();
 			const res = this.parseTerminalNode();
 			if (res instanceof Error) return res;
-
-			return new UnaryOp(tokenType, res);
+			
+			return new UnaryOp(token, res);
 		}
-		
-		switch (this.previous().tokenType) {
-			case TokenType.LeftParen:
-				const res = this.parseExpression(0);
-				if (res instanceof Error) return res;
-
-				// If expression isn't ended by a right paren, error
-				if (!this.match(TokenType.RightParen))
-					return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
-
-				return res;
-			case TokenType.True:
-				return new ASTLiteral(LiteralType.Boolean, true);
-			case TokenType.False:
-				return new ASTLiteral(LiteralType.Boolean, false);
-			default:
-				// current token is a literal, treat it as such
-				return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)
+		else {
+			return this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
 		}
 	}
 

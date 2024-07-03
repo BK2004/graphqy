@@ -1,4 +1,4 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, printAST } from "../parsing";
 import { Error, ErrorType } from "../error";
 import { Token, TokenType } from "../scanning";
 
@@ -11,18 +11,26 @@ export class Evaluator {
 		this.parser = parser;
 	}
 
-	// next
-	// 	Evaluate next statement (expression for now)
+	// interpret
+	// 	Interpret next statement (expression for now)
 	// 	@params:
 	// 	@returns:
-	// 		Error if there is an error parsing
-	next(): Err<undefined> {
+	// 		Error if there is an error parsing or interpreting
+	interpret(): Err<undefined> {
 		const ast = this.parser.parseExpression(0);
 
-		if (ast instanceof Error) return ast;
+		if (ast instanceof Error) {
+			return ast;
+		}
 
-		const res = this.eval(ast);
-		return res;
+		try {
+			return this.eval(ast);
+		} catch(e) {
+			if (e instanceof Error) {
+				// will always be true
+				return e;
+			}
+		}
 	}
 
 	// eval
@@ -48,28 +56,51 @@ export class Evaluator {
 	// 		node - node to evaluate
 	// 	@returns:
 	// 		Value evaluated
-	evalBinaryOp(node: BinaryOp): number|string {
+	evalBinaryOp(node: BinaryOp): number|string|boolean {
 		const left = this.eval(node.children[0]);
 		const right = this.eval(node.children[1]);
 
-		switch (node.op) {
+		switch (node.op.tokenType) {
+			case TokenType.Asterisk2:
+				this.ensureArithmeticOperands(node.op, left, right);
+				return left ** right;
 			case TokenType.Asterisk:
-				this.ensureArithmeticOperands(left, right);
+				this.ensureArithmeticOperands(node.op, left, right);
 				return left * right;
 			case TokenType.Slash:
-				this.ensureArithmeticOperands(left, right);
+				this.ensureArithmeticOperands(node.op, left, right);
+				if (right == 0) {
+					this.runtimeError(new ErrorType.DivideByZero(), node.op.line, node.op.column);
+				}
 				return left / right;
-			case TokenType.Minus:
-				this.ensureArithmeticOperands(left, right);
-				return left - right;
 			case TokenType.Plus:
 				if (typeof left === "string" || typeof right === "string")
 					return left.toString() + right.toString();
-				this.ensureArithmeticOperands(left, right);
+				this.ensureArithmeticOperands(node.op, left, right);
 				return left + right;
-			case TokenType.Asterisk2:
-				this.ensureArithmeticOperands(left, right);
-				return left ** right;
+			case TokenType.Minus:
+				this.ensureArithmeticOperands(node.op, left, right);
+				return left - right;
+			case TokenType.Equals2:
+				return left === right;
+			case TokenType.LessThan:
+				this.ensureComparableOperands(node.op, left, right);
+				return left < right;
+			case TokenType.LessThanEquals:
+				this.ensureComparableOperands(node.op, left, right);
+				return left <= right;
+			case TokenType.GreaterThan:
+				this.ensureComparableOperands(node.op, left, right);
+				return left > right;
+			case TokenType.GreaterThanEquals:
+				this.ensureComparableOperands(node.op, left, right);
+				return left >= right
+			case TokenType.NotEquals:
+				return left !== right;
+			case TokenType.And:
+				return this.truthy(left) && this.truthy(right);
+			case TokenType.Or:
+				return this.truthy(left) || this.truthy(right);
 		}
 
 		return 0; // never runs
@@ -83,11 +114,11 @@ export class Evaluator {
 	// 		value evaluated
 	evalUnaryOp(node: UnaryOp): number|boolean {
 		const ch = this.eval(node.child);
-		switch (node.op) {
+		switch (node.op.tokenType) {
 			case TokenType.Minus:
-				this.ensureArithmeticOperands(ch);
+				this.ensureArithmeticOperands(node.op, ch);
 				return -ch;
-			case TokenType.Bang:
+			case TokenType.Not:
 				return !this.truthy(ch);
 		}
 
@@ -97,20 +128,38 @@ export class Evaluator {
 	// ensureArithmeticOperands
 	// 	Verifies that values are numeric operands
 	// 	@params:
+	// 		operator - token which would signify error location
 	// 		values - list of values to check
 	// 	@returns:
 	// 		arithmetic operands if applicable
-	ensureArithmeticOperands(...values: any[]): number[] {
+	ensureArithmeticOperands(operator: Token, ...values: any[]): number[] {
 		const res: number[] = [];
 		values.forEach(v => {
 			if (typeof v === "number")
 				res.push(v);
 			else {
-				this.runtimeError(new ErrorType.UnexpectedType(typeof v, "number"));
+				this.runtimeError(new ErrorType.UnexpectedType(typeof v, "number"), operator.line, operator.column);
 			}
 		})
 
 		return res;
+	}
+
+	// ensureComparableOperands
+	// 	Verifies that values are comparable, i.e., can be compared with <, <=, etc.
+	// 	@params:
+	// 		operator - token which would signify error location
+	// 		left - left value
+	// 		right - right value
+	// 	@returns:
+	// 		comparable values if applicable
+	ensureComparableOperands(operator: Token, left: any, right: any): any[2] {
+		const comparable = ["string", "number"];
+		if (typeof left !== typeof right || !comparable.find(v => v === typeof left)) {
+			this.runtimeError(new ErrorType.BadComparison(typeof left, typeof right), operator.line, operator.column);
+		}
+
+		return [left, right];
 	}
 
 	// truthy
@@ -128,8 +177,12 @@ export class Evaluator {
 	// 	Throw a run time error with given error type
 	// 	@params:
 	// 		error - error to wrap
+	// 		line - line where error occurred
+	// 		column - column where error occurred
 	// 	@returns:
-	runtimeError(error: Error) {
-		throw new Error(error.errorCode, error.fmtString());
+	runtimeError(error: Error, line?: number, column?: number) {
+		error.lineNumber = line;
+		error.columnNumber = column;
+		throw error;
 	}
 }

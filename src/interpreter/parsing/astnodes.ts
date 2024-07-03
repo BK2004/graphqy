@@ -28,9 +28,9 @@ export class ASTLiteral extends ASTNode {
 
 export class BinaryOp extends ASTNode {
 	children: [ASTNode, ASTNode];
-	op: TokenType;
+	op: Token;
 
-	constructor(op: TokenType, lchild: ASTNode, rchild: ASTNode) {
+	constructor(op: Token, lchild: ASTNode, rchild: ASTNode) {
 		super(ASTNodeType.BinaryOp);
 
 		this.children = [lchild, rchild];
@@ -40,9 +40,9 @@ export class BinaryOp extends ASTNode {
 
 export class UnaryOp extends ASTNode {
 	child: ASTNode;
-	op: TokenType;
+	op: Token;
 
-	constructor(op: TokenType, child: ASTNode) {
+	constructor(op: Token, child: ASTNode) {
 		super(ASTNodeType.UnaryOp);
 
 		this.child = child;

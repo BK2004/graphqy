@@ -11,7 +11,15 @@ export enum TokenType {
 	LeftParen = "(",
 	RightParen = ")",
 	Asterisk2 = "**",
-	Bang = "!",
+	LessThan = "<",
+	LessThanEquals = "<=",
+	GreaterThan = ">",
+	GreaterThanEquals = ">=",
+	NotEquals = "!=",
+	Equals2 = "==",
+	Not = "not",
+	And = "and",
+	Or = "or",
 	True = "true",
 	False = "false",
 }
@@ -46,12 +54,21 @@ export class Literal extends Token {
 	}
 }
 
+// Follows lua precedence (https://www.lua.org/pil/3.5.html)
 export const OPERATOR_PRECEDENCE: Record<string, number> = {
-	[TokenType.Plus]: 8,
-	[TokenType.Minus]: 8,
-	[TokenType.Asterisk]: 9,
-	[TokenType.Slash]: 9,
 	[TokenType.Asterisk2]: 13,
+	[TokenType.Asterisk]: 12,
+	[TokenType.Slash]: 12,
+	[TokenType.Plus]: 11,
+	[TokenType.Minus]: 11,
+	[TokenType.LessThan]: 10,
+	[TokenType.LessThanEquals]: 10,
+	[TokenType.GreaterThan]: 10,
+	[TokenType.GreaterThanEquals]: 10,
+	[TokenType.NotEquals]: 10,
+	[TokenType.Equals2]: 10,
+	[TokenType.And]: 9,
+	[TokenType.Or]: 8,
 };
 
 const SYMBOL_TOKENS: [string, TokenType][] = [
@@ -62,13 +79,21 @@ const SYMBOL_TOKENS: [string, TokenType][] = [
 	[';', TokenType.Semicolon],
 	['(', TokenType.LeftParen],
 	[')', TokenType.RightParen],
+	['<', TokenType.LessThan],
+	['<=', TokenType.LessThanEquals],
+	['>', TokenType.GreaterThan],
+	['>=', TokenType.GreaterThanEquals],
+	['!=', TokenType.NotEquals],
+	['==', TokenType.Equals2],
 	['**', TokenType.Asterisk2],
-	['!', TokenType.Bang],
 ]
 
 const KEYWORD_TOKENS: [string, TokenType][] = [
 	['true', TokenType.True],
-	['false', TokenType.False]
+	['false', TokenType.False],
+	['not', TokenType.Not],
+	['and', TokenType.And],
+	['or', TokenType.Or],
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {
@@ -77,7 +102,7 @@ export const RL_ASSOCIATIVE_TOKENS = {
 
 export const UNARY_TOKENS = {
 	[TokenType.Minus]: true,
-	[TokenType.Bang]: true
+	[TokenType.Not]: true
 }
 
 export const SymbolTokens = buildTrie(SYMBOL_TOKENS);
