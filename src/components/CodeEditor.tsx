@@ -3,7 +3,7 @@ import { useRef, useEffect, type RefObject } from "react";
 const KEYWORDS = [
 	"and",
 	"or",
-	"not"
+	"not",
 ]
 
 interface Props {

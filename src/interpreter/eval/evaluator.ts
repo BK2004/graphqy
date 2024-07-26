@@ -1,14 +1,17 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, printAST } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment } from "../parsing";
 import { Error, ErrorType } from "../error";
-import { Token, TokenType } from "../scanning";
+import { LiteralType, Token, TokenType } from "../scanning";
+import { Environment } from "./environment";
 
 type Err<T> = Error | T
 
 export class Evaluator {
 	parser: Parser;
-
+	environment: Environment;
+	
 	constructor(parser: Parser) {
 		this.parser = parser;
+		this.environment = new Environment();
 	}
 
 	// interpret
@@ -17,14 +20,10 @@ export class Evaluator {
 	// 	@returns:
 	// 		Error if there is an error parsing or interpreting
 	interpret(): Err<undefined> {
-		const ast = this.parser.parseExpression(0);
-
-		if (ast instanceof Error) {
-			return ast;
-		}
-
+		const stmts = this.parser.parse();
+		if (stmts instanceof Error) return stmts;
 		try {
-			return this.eval(ast);
+			stmts.forEach(stmt => this.exec(stmt));
 		} catch(e) {
 			if (e instanceof Error) {
 				// will always be true
@@ -33,11 +32,51 @@ export class Evaluator {
 		}
 	}
 
+	// exec
+	//	Execute statement AST
+	// 	@params:
+	// 		root - root of AST
+	// 	@returns:
+	//		Result of executed AST
+	exec(root: Statement): Err<any> {
+		switch (root.statementType) {
+			case StatementType.Expression:
+				return this.eval((root as Expression).expr);
+			case StatementType.Print:
+				return this.execPrint(root as Print);
+			case StatementType.Var:
+				return this.execVar(root as Var);
+		}
+	}
+
+	// execPrint
+	//	Execute print
+	// 	@params:
+	// 		print - Print node
+	// 	@returns:
+	execPrint(print: Print): Err<void> {
+		console.log(this.eval(print.expr));
+	}
+
+	// execVar
+	// 	Execute var statement, putting variable data into values map
+	// 	@params:
+	// 		varStmt - Var node
+	// 	@returns:
+	execVar(varStmt: Var): Err<void> {
+		let res = this.environment.newVar(varStmt.name, varStmt.const);
+		if (res instanceof Error) this.runtimeError(res, varStmt.line, varStmt.column);
+
+		if (!varStmt.init) return;
+		res = this.environment.set(varStmt.name, this.eval(varStmt.init));
+		if (res instanceof Error) this.runtimeError(res, varStmt.line, varStmt.column);
+	}
+
 	// eval
 	// 	Evaluate ast
-	// 	@params
-	// 		root - root of AST to evaluate
-	// 	@returns
+	// 	@params:
+	// 		root - root of expression AST to evaluate
+	// 	@returns:
 	// 		Result of evaluating AST. May be a runtime error.
 	eval(root: ASTNode): Err<any> {
 		switch(root.nodeType) {
@@ -45,7 +84,14 @@ export class Evaluator {
 				return this.evalBinaryOp(root as BinaryOp);
 			case ASTNodeType.UnaryOp:
 				return this.evalUnaryOp(root as UnaryOp);
+			case ASTNodeType.Assignment:
+				return this.evalAssignment(root as Assignment);
 			case ASTNodeType.Literal:
+				if ((root as ASTLiteral).literalType === LiteralType.Identifier) {
+					const res = this.environment.get((root as ASTLiteral).value as string);
+					if (res instanceof Error) this.runtimeError(res, (root as ASTLiteral).line, (root as ASTLiteral).column);
+					return res;
+				}
 				return (root as ASTLiteral).value;
 		}
 	}
@@ -125,6 +171,18 @@ export class Evaluator {
 		return 0; // never runs
 	}
 
+	// evalAssignment
+	// 	Evaluates assignment
+	// 	@params:
+	// 		assignment - assignment node
+	// 	@returns:
+	evalAssignment(assignment: Assignment): Err<void> {
+		const res = this.environment.set(((assignment as Assignment).lhs as ASTLiteral).value as string,
+			this.eval((assignment as Assignment).rhs));
+		if (res instanceof Error)
+			this.runtimeError(res, assignment.line, assignment.column);
+	}
+
 	// ensureArithmeticOperands
 	// 	Verifies that values are numeric operands
 	// 	@params:
@@ -138,7 +196,7 @@ export class Evaluator {
 			if (typeof v === "number")
 				res.push(v);
 			else {
-				this.runtimeError(new ErrorType.UnexpectedType(typeof v, "number"), operator.line, operator.column);
+				this.runtimeError(new ErrorType.UnexpectedType(v === null ? "null" : typeof v, "number"), operator.line, operator.column);
 			}
 		})
 

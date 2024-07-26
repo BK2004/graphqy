@@ -30,4 +30,8 @@ span.line-num::before {
 	span.string-literal {
 		@apply text-green-500 m-0 inline-block
 	}
+
+	span.bool-literal {
+		@apply text-blue-700
+	}
 }

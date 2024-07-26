@@ -1,3 +1,3 @@
 export * from "./astnodes";
+export * from "./statements";
 export * from "./parser";
-export * from "./astprinter";

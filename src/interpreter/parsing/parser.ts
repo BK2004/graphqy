@@ -1,14 +1,13 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment } from ".";
 
-type Err<T> = Error | T
+type Err<T> = T
 
 export class Parser {
 	scanner: Scanner;
 	currentToken: Token;
 	prevToken: Token;
-	error?: Error;
 
 	constructor(scanner: Scanner) {
 		this.scanner = scanner;
@@ -16,17 +15,8 @@ export class Parser {
 		this.prevToken = new Token(TokenType.EOF, 0, 0);
 
 		const err = this.scanner.scanTokens();
-		if (err) this.error = err;
+		if (err) throw err;
 		else this.currentToken = this.scanner.peek();
-	}
-
-	// getError
-	// 	Gets error if parser faced an error
-	// 	@params:
-	// 	@returns:
-	// 		Error if parser errored at any point, otherwise undefined
-	getError(): Err<undefined> {
-		return this.error;
 	}
 
 	// next
@@ -69,30 +59,151 @@ export class Parser {
 		return this.prevToken;
 	}
 
+	// synchronize
+	// 	Synchronize parser after error
+	// 	@params:
+	// 	@returns:
+	synchronize() {
+		this.next();
+
+		while (this.currentToken.tokenType !== TokenType.EOF) {
+			if (this.previous().tokenType == TokenType.Semicolon) return;
+
+			switch (this.currentToken.tokenType) {
+				case TokenType.Var:
+				case TokenType.Const:
+				case TokenType.Print:
+					return;
+			}
+
+			this.next();
+		}
+	}
+
+	// parse
+	//	Parses all statements in program
+	// 	@params:
+	// 	@returns:
+	// 		List of statements
+	parse(): Err<Statement[]> {
+		const res: Statement[] = [];
+
+		while (this.currentToken.tokenType !== TokenType.EOF) {
+			const next = this.parseDeclaration();
+			if (next) res.push(next);
+		}
+
+		return res;
+	}
+
+	// parseDeclaration
+	// 	Parses declaration statement (e.g. class or const)
+	// 	@params:
+	// 	@returns:
+	// 		Parsed declaration statement or regular statement
+	parseDeclaration(): Statement | void {
+		try {
+			if (this.match(TokenType.Var, TokenType.Const)) {
+				return this.parseVarDeclaration();
+			}
+
+			return this.parseStatement();
+		} catch (e: any) {
+			this.synchronize();
+		}
+	}
+
+	// parseVarDeclaration
+	// 	Parses variable declaration (const and var)
+	// 	@params:
+	// 	@returns:
+	// 		Var declaration node
+	parseVarDeclaration(): Err<Var> {
+		const isConst = this.previous().tokenType == TokenType.Const;
+
+		if (!this.match(TokenType.Literal)) 
+			throw this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, ["identifier"]));
+		if ((this.previous() as Literal).literalType !== LiteralType.Identifier) 
+			throw this.wrapError(new ErrorType.UnexpectedType((this.previous() as Literal).literalType.toString(), "identifier"));
+		const name = this.previous() as Literal;
+
+		let init;
+		// if an equal sign follows, the var is initialized
+		if (this.match(TokenType.Equals)) {
+			init = this.parseEquality(0);
+		}
+
+		this.match(TokenType.Semicolon);
+		return new Var(name, isConst, init);
+	}
+
+	// parseStatement
+	//	Parses next statement in program
+	// 	@params:
+	// 	@returns:
+	// 		Next statement or error if there is an error
+	parseStatement(): Err<Statement> {
+		if (this.match(TokenType.Print)) return this.parsePrint();
+
+		const expr = this.parseExpression();
+		this.match(TokenType.Semicolon);
+		return new Expression(expr);
+	}
+
+	// parsePrint
+	// 	Parses print statement
+	// 	@params:
+	// 	@returns:
+	// 		Print statement node
+	parsePrint(): Err<Print> {
+		const expr = this.parseEquality(0);
+		return new Print(expr);
+	}
+
 	// parseExpression
 	// 	Parses expression
 	// 	@params:
-	// 		prev - Previous operator precedence
-	parseExpression(prev: number): Err<ASTNode> {
-		let left = this.parseTerminalNode();
-		if (left instanceof Error) return left;
+	// 	@returns:
+	// 		Expression
+	parseExpression(): Err<ASTNode> {
+		const left = this.parseEquality(0);
 
-		const exprFlags = [TokenType.EOF, TokenType.Semicolon, TokenType.RightParen]
-		if (this.test(...exprFlags)) return left;
+		if (this.match(TokenType.Equals)) {
+			// This is an assignment expression, treat it as such
+			const eq = this.previous();
+			const value = this.parseEquality(0);
+
+			if (left instanceof ASTLiteral && (left as ASTLiteral).literalType === LiteralType.Identifier) {
+				// variable
+				return new Assignment(left, value, eq.line, eq.column);
+			}
+
+			// Invalid l-value
+			throw this.wrapError(new ErrorType.BadAssignmentTarget());
+		}
+
+		return left;
+	}
+
+	// parseEquality
+	// 	Parses equality
+	// 	@params:
+	// 		prev - Previous operator precedence
+	// 	@returns:
+	// 		Equality
+	parseEquality(prev: number): Err<ASTNode> {
+		let left = this.parseTerminalNode();
 		
-		let right: Err<ASTNode>;
+		let right: ASTNode;
 		let token: Token = this.currentToken;
 		if (!this.getPrecedence(token)) return left;
 
 		while (this.getPrecedence(token) && ((this.getPrecedence(token)! > prev) || (this.getPrecedence(token)! === prev && this.isRLAssociative(token)))) {
 			this.next();
-			right = this.parseExpression(this.getPrecedence(token)!);
-			if (right instanceof Error) return right;
+			right = this.parseEquality(this.getPrecedence(token)!);
 
 			// Join left and right with binary op
 			left = new BinaryOp(token, left, right as ASTNode)
-
-			if (this.test(...exprFlags)) return left;
 			
 			token = this.currentToken;
 			if (!this.getPrecedence(token)) return left;
@@ -110,33 +221,31 @@ export class Parser {
 		if (this.match(TokenType.Literal, TokenType.LeftParen, TokenType.True, TokenType.False)) {
 			switch (this.previous().tokenType) {
 				case TokenType.LeftParen:
-					const res = this.parseExpression(0);
-					if (res instanceof Error) return res;
+					const res = this.parseEquality(0);
 	
 					// If expression isn't ended by a right paren, error
 					if (!this.match(TokenType.RightParen))
-						return this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
+						throw this.wrapError(new ErrorType.UnexpectedToken(this.currentToken.tokenType, [TokenType.RightParen]));
 	
 					return res;
 				case TokenType.True:
-					return new ASTLiteral(LiteralType.Boolean, true);
+					return new ASTLiteral(LiteralType.Boolean, true, this.previous().line, this.previous().column);
 				case TokenType.False:
-					return new ASTLiteral(LiteralType.Boolean, false);
+					return new ASTLiteral(LiteralType.Boolean, false, this.previous().line, this.previous().column);
 				default:
 					// current token is a literal, treat it as such
-					return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!)
+					return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!, this.previous().line, this.previous().column)
 			}
 		}
 		// If a unary operator, parse terminal node to the right
 		else if (this.currentToken.tokenType in UNARY_TOKENS) {
 			const token = this.next();
 			const res = this.parseTerminalNode();
-			if (res instanceof Error) return res;
 			
 			return new UnaryOp(token, res);
 		}
 		else {
-			return this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
+			throw this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
 		}
 	}
 

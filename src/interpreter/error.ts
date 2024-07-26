@@ -1,3 +1,4 @@
+import { ASTLiteral } from "./parsing";
 import { TokenType } from "./scanning";
 
 type char = string;
@@ -41,7 +42,7 @@ export const ErrorType = {
 	},
 	UnexpectedToken: class extends Error {
 		constructor(received: TokenType, expected: string[]) {
-			super("UNEXP_TOKEN", `Received '${received},' but expected ${expected.length > 1 ? `one of: ${expected.join(", ")}` : expected.join("")}`)
+			super("UNEXP_TOKEN", `Received '${received}' but expected ${expected.length > 1 ? `one of: ${expected.join(", ")}` : expected.join("")}`)
 		}
 	},
 	ExpectedTerminal: class extends Error {
@@ -67,6 +68,26 @@ export const ErrorType = {
 	BadComparison: class extends Error {
 		constructor(leftType: string, rightType: string) {
 			super("BAD_CMP", `Can't compare ${leftType} and ${rightType}`)
+		}
+	},
+	VarExists: class extends Error {
+		constructor(name: string) {
+			super("VAR_EXISTS", `Variable ${name} already exists`)
+		}
+	},
+	VarDNE: class extends Error {
+		constructor(name: string) {
+			super("VAR_DNE", `Variable ${name} does not exist`)
+		}
+	},
+	BadAssignmentTarget: class extends Error {
+		constructor() {
+			super("BAD_ASSG_TRG", `Can't assign to target`)
+		}
+	},
+	ConstVar: class extends Error {
+		constructor(name: string) {
+			super("CONST_VAR", `Variable ${name} is constant and can't be reassigned`)
 		}
 	}
 }

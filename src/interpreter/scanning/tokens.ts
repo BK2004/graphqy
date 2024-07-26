@@ -16,12 +16,16 @@ export enum TokenType {
 	GreaterThan = ">",
 	GreaterThanEquals = ">=",
 	NotEquals = "!=",
+	Equals = "=",
 	Equals2 = "==",
 	Not = "not",
 	And = "and",
 	Or = "or",
 	True = "true",
 	False = "false",
+	Print = "print",
+	Var = "var",
+	Const = "const",
 }
 
 export enum LiteralType {
@@ -84,6 +88,7 @@ const SYMBOL_TOKENS: [string, TokenType][] = [
 	['>', TokenType.GreaterThan],
 	['>=', TokenType.GreaterThanEquals],
 	['!=', TokenType.NotEquals],
+	['=', TokenType.Equals],
 	['==', TokenType.Equals2],
 	['**', TokenType.Asterisk2],
 ]
@@ -94,6 +99,9 @@ const KEYWORD_TOKENS: [string, TokenType][] = [
 	['not', TokenType.Not],
 	['and', TokenType.And],
 	['or', TokenType.Or],
+	['print', TokenType.Print],
+	['var', TokenType.Var],
+	['const', TokenType.Const],
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {

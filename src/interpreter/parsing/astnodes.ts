@@ -4,6 +4,7 @@ export enum ASTNodeType {
 	Literal,
 	BinaryOp,
 	UnaryOp,
+	Assignment,
 }
 
 export class ASTNode {
@@ -17,12 +18,16 @@ export class ASTNode {
 export class ASTLiteral extends ASTNode {
 	literalType: LiteralType;
 	value: string | number | boolean;
+	line?: number;
+	column?: number;
 
-	constructor(literalType: LiteralType, value: string | number | boolean) {
+	constructor(literalType: LiteralType, value: string | number | boolean, line?: number, column?: number) {
 		super(ASTNodeType.Literal);
 
 		this.literalType = literalType;
 		this.value = value;
+		this.line = line;
+		this.column = column;
 	}
 }
 
@@ -47,5 +52,20 @@ export class UnaryOp extends ASTNode {
 
 		this.child = child;
 		this.op = op;
+	}
+}
+
+export class Assignment extends ASTNode {
+	lhs: ASTNode;
+	rhs: ASTNode;
+	line: number;
+	column: number;
+
+	constructor(lhs: ASTNode, rhs: ASTNode, line: number, column: number) {
+		super(ASTNodeType.Assignment);
+		this.lhs = lhs;
+		this.rhs = rhs;
+		this.line = line;
+		this.column = column;
 	}
 }

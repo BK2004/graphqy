@@ -2,8 +2,9 @@ import { useRef } from 'react';
 import { Scanner } from './interpreter/scanning'
 import CodeEditor from './components/CodeEditor';
 import ControlBar from './components/ControlBar';
-import { ASTNode, Parser, printAST } from './interpreter/parsing';
+import { ASTNode, Parser } from './interpreter/parsing';
 import { Evaluator } from './interpreter/eval';
+import { Error } from './interpreter/error';
 
 function App() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -22,7 +23,7 @@ function App() {
 					const parser = new Parser(scanner);
 					const evaluator = new Evaluator(parser);
 					const res = evaluator.interpret();
-					console.log(res);
+					if (res instanceof Error) console.log(res.fmtString());
 				}} onPause={() => console.log(inputRef.current?.value)} />
 			<CodeEditor inputRef={inputRef} />
 		</div>
