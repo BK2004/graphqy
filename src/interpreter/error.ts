@@ -45,6 +45,11 @@ export const ErrorType = {
 			super("UNEXP_TOKEN", `Received '${received}' but expected ${expected.length > 1 ? `one of: ${expected.join(", ")}` : expected.join("")}`)
 		}
 	},
+	TokenExpected: class extends Error {
+		constructor(expected: TokenType) {
+			super("TOKEN_EXP", `Expected ${expected}`)
+		}
+	},
 	ExpectedTerminal: class extends Error {
 		constructor(received: TokenType) {
 			super("EXP_TERM", `Received '${received}' but expected a terminal value`)

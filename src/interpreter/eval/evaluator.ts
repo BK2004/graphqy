@@ -1,4 +1,4 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block } from "../parsing";
 import { Error, ErrorType } from "../error";
 import { LiteralType, Token, TokenType } from "../scanning";
 import { Environment } from "./environment";
@@ -46,6 +46,8 @@ export class Evaluator {
 				return this.execPrint(root as Print);
 			case StatementType.Var:
 				return this.execVar(root as Var);
+			case StatementType.Block:
+				return this.execBlock(root as Block);
 		}
 	}
 
@@ -64,12 +66,27 @@ export class Evaluator {
 	// 		varStmt - Var node
 	// 	@returns:
 	execVar(varStmt: Var): Err<void> {
-		let res = this.environment.newVar(varStmt.name, varStmt.const);
+		const val = varStmt.init ? this.eval(varStmt.init) : undefined;
+		const res = this.environment.newVar(varStmt.name, varStmt.const, val);
 		if (res instanceof Error) this.runtimeError(res, varStmt.line, varStmt.column);
+	}
 
-		if (!varStmt.init) return;
-		res = this.environment.set(varStmt.name, this.eval(varStmt.init));
-		if (res instanceof Error) this.runtimeError(res, varStmt.line, varStmt.column);
+	// execBlock
+	// 	Execute block statement
+	// 	@params:
+	// 		block - Block node
+	// 	@returns:
+	execBlock(block: Block): Err<void> {
+		// create new environment enclosed by previous
+		const prev = this.environment;
+
+		try {
+			this.environment = new Environment(prev);
+
+			block.statements.forEach(stmt => this.exec(stmt));
+		} finally {
+			this.environment = prev;
+		}
 	}
 
 	// eval

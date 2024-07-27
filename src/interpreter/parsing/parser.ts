@@ -1,6 +1,6 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block } from ".";
 
 type Err<T> = T
 
@@ -106,6 +106,9 @@ export class Parser {
 			if (this.match(TokenType.Var, TokenType.Const)) {
 				return this.parseVarDeclaration();
 			}
+			if (this.match(TokenType.Block)) {
+				return this.parseBlock();
+			}
 
 			return this.parseStatement();
 		} catch (e: any) {
@@ -135,6 +138,26 @@ export class Parser {
 
 		this.match(TokenType.Semicolon);
 		return new Var(name, isConst, init);
+	}
+
+	// parseBlock
+	//	Parses block of statements
+	// 	@params:
+	// 	@returns:
+	// 		Parsed block
+	parseBlock(): Err<Statement> {
+		const block = new Block();
+
+		while (!this.test(TokenType.End) && this.currentToken.tokenType !== TokenType.EOF) {
+			const stmt = this.parseDeclaration();
+			if (stmt) block.statements.push(stmt);
+		}
+
+		if (!this.match(TokenType.End)) {
+			throw this.wrapError(new ErrorType.TokenExpected(TokenType.End));
+		}
+
+		return block;
 	}
 
 	// parseStatement

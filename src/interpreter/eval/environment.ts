@@ -8,9 +8,11 @@ type Err<T> = Error | T
 
 export class Environment {
 	values: Map<string, VarData>;
+	enclosing?: Environment;
 
-	constructor() {
+	constructor(enclosing?: Environment) {
 		this.values = new Map();
+		this.enclosing = enclosing;
 	}
 
 	// get
@@ -21,7 +23,7 @@ export class Environment {
 	// 		Value of entry
 	get(name: string): Err<any> {
 		if (!this.values.has(name)) {
-			return new ErrorType.VarDNE(name)
+			return this.enclosing ? this.enclosing.get(name) : new ErrorType.VarDNE(name)
 		}
 
 		const val = this.values.get(name)!.value;
@@ -37,7 +39,8 @@ export class Environment {
 	// 	@returns:
 	// 		Old value, or error if there is one
 	set(key: string, value: any): Err<void> {
-		if (!this.values.has(key)) return new ErrorType.VarDNE(key);
+		if (!this.values.has(key)) 
+			return this.enclosing ? this.enclosing.set(key, value) : new ErrorType.VarDNE(key);
 		const old = this.values.get(key)!;
 		if (old.const && old.value !== undefined) return new ErrorType.ConstVar(key);
 

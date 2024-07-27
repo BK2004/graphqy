@@ -26,6 +26,8 @@ export enum TokenType {
 	Print = "print",
 	Var = "var",
 	Const = "const",
+	Block = "block",
+	End = "end",
 }
 
 export enum LiteralType {
@@ -102,6 +104,8 @@ const KEYWORD_TOKENS: [string, TokenType][] = [
 	['print', TokenType.Print],
 	['var', TokenType.Var],
 	['const', TokenType.Const],
+	['block', TokenType.Block],
+	['end', TokenType.End],
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {

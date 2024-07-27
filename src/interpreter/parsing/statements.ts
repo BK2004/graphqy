@@ -5,6 +5,7 @@ export enum StatementType {
 	Print,
 	Expression,
 	Var,
+	Block,
 }
 
 export class Statement {
@@ -46,5 +47,17 @@ export class Var extends Statement {
 		this.name = name.value! as string;
 		this.const = isConst;
 		this.init = init;
+		this.line = line;
+		this.column = column;
+	}
+}
+
+export class Block extends Statement {
+	statements: Statement[];
+
+	constructor() {
+		super(StatementType.Block);
+
+		this.statements = [];
 	}
 }
