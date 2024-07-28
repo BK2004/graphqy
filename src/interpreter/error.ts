@@ -46,8 +46,8 @@ export const ErrorType = {
 		}
 	},
 	TokenExpected: class extends Error {
-		constructor(expected: TokenType) {
-			super("TOKEN_EXP", `Expected ${expected}`)
+		constructor(...expected: TokenType[]) {
+			super("TOKEN_EXP", `Expected ${expected.length === 1 ? expected[0] : `one of [${expected.join(", ")}]`}`)
 		}
 	},
 	ExpectedTerminal: class extends Error {

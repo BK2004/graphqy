@@ -6,6 +6,7 @@ export enum StatementType {
 	Expression,
 	Var,
 	Block,
+	If,
 }
 
 export class Statement {
@@ -59,5 +60,21 @@ export class Block extends Statement {
 		super(StatementType.Block);
 
 		this.statements = [];
+	}
+}
+
+export class If extends Statement {
+	condition: ASTNode;
+	thenBlock: Block;
+	elseIfBlocks?: {condition: ASTNode, block: Block}[];
+	elseBlock?: Block;
+
+	constructor(condition: ASTNode, thenBlock: Block, elseIfBlocks?: {condition: ASTNode, block: Block}[], elseBlock?: Block) {
+		super(StatementType.If);
+
+		this.condition = condition;
+		this.thenBlock = thenBlock;
+		this.elseIfBlocks = elseIfBlocks?.slice();
+		this.elseBlock = elseBlock;
 	}
 }

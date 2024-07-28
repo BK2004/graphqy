@@ -1,6 +1,6 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If } from ".";
 
 type Err<T> = T
 
@@ -107,7 +107,10 @@ export class Parser {
 				return this.parseVarDeclaration();
 			}
 			if (this.match(TokenType.Block)) {
-				return this.parseBlock();
+				return this.parseBlock(TokenType.End);
+			}
+			if (this.match(TokenType.If)) {
+				return this.parseIf();
 			}
 
 			return this.parseStatement();
@@ -143,21 +146,51 @@ export class Parser {
 	// parseBlock
 	//	Parses block of statements
 	// 	@params:
+	// 		flags - token types that mark end of block
 	// 	@returns:
 	// 		Parsed block
-	parseBlock(): Err<Statement> {
+	parseBlock(...flags: TokenType[]): Err<Block> {
 		const block = new Block();
 
-		while (!this.test(TokenType.End) && this.currentToken.tokenType !== TokenType.EOF) {
+		while (!this.test(...flags) && this.currentToken.tokenType !== TokenType.EOF) {
 			const stmt = this.parseDeclaration();
 			if (stmt) block.statements.push(stmt);
 		}
 
-		if (!this.match(TokenType.End)) {
-			throw this.wrapError(new ErrorType.TokenExpected(TokenType.End));
+		if (!this.match(...flags)) {
+			throw this.wrapError(new ErrorType.TokenExpected(...flags));
 		}
 
 		return block;
+	}
+
+	// parseIf
+	// 	Parses if statement
+	// 	@params:
+	// 	@returns:
+	// 		Parsed if statement
+	parseIf(): Err<If> {
+		const condition = this.parseEquality(0);
+		if (!this.match(TokenType.Then)) {
+			throw this.wrapError(new ErrorType.TokenExpected(TokenType.Then));
+		}
+
+		const thenBlock = this.parseBlock(TokenType.End, TokenType.Else, TokenType.ElseIf);
+
+		// scan else if blocks while they appear
+		const elseIfBlocks = [];
+		while (this.previous().tokenType === TokenType.ElseIf) {
+			const condition = this.parseEquality(0);
+			if (!this.match(TokenType.Then)) {
+				throw this.wrapError(new ErrorType.TokenExpected(TokenType.Then));
+			}
+
+			const elseIfBlock = this.parseBlock(TokenType.End, TokenType.Else, TokenType.ElseIf);
+			elseIfBlocks.push({ condition, block: elseIfBlock });
+		}
+
+		return new If(condition, thenBlock, elseIfBlocks,
+			this.previous().tokenType === TokenType.Else ? this.parseBlock(TokenType.End) : undefined);
 	}
 
 	// parseStatement
@@ -189,7 +222,16 @@ export class Parser {
 	// 	@returns:
 	// 		Expression
 	parseExpression(): Err<ASTNode> {
-		const left = this.parseEquality(0);
+		return this.parseAssignment();
+	}
+
+	// parseAssignment
+	// 	Parses assignment
+	// 	@params:
+	// 	@returns:
+	// 		Assignment or equality
+	parseAssignment(): Err<ASTNode> {
+		const left = this.parseOr();
 
 		if (this.match(TokenType.Equals)) {
 			// This is an assignment expression, treat it as such
@@ -206,6 +248,40 @@ export class Parser {
 		}
 
 		return left;
+	}
+
+	// parseOr
+	// 	Parses or statements
+	// 	@params:
+	// 	@returns:
+	// 		Or expressiosn
+	parseOr(): Err<ASTNode> {
+		let expr = this.parseAnd();
+
+		while (this.match(TokenType.Or)) {
+			const op = this.previous();
+			const right = this.parseAnd();
+			expr = new BinaryOp(op, expr, right);
+		}
+
+		return expr;
+	}
+
+	// parseAnd
+	// 	Parses and statements
+	// 	@params:
+	// 	@returns:
+	// 		And expressions
+	parseAnd(): Err<ASTNode> {
+		let expr = this.parseEquality(0);
+
+		while (this.match(TokenType.And)) {
+			const op = this.previous();
+			const right = this.parseEquality(0);
+			expr = new BinaryOp(op, expr, right);
+		}
+
+		return expr;
 	}
 
 	// parseEquality

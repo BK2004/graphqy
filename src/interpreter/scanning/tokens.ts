@@ -28,6 +28,10 @@ export enum TokenType {
 	Const = "const",
 	Block = "block",
 	End = "end",
+	If = "if",
+	Then = "then",
+	Else = "else",
+	ElseIf = "elseif",
 }
 
 export enum LiteralType {
@@ -73,8 +77,6 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
 	[TokenType.GreaterThanEquals]: 10,
 	[TokenType.NotEquals]: 10,
 	[TokenType.Equals2]: 10,
-	[TokenType.And]: 9,
-	[TokenType.Or]: 8,
 };
 
 const SYMBOL_TOKENS: [string, TokenType][] = [
@@ -106,6 +108,10 @@ const KEYWORD_TOKENS: [string, TokenType][] = [
 	['const', TokenType.Const],
 	['block', TokenType.Block],
 	['end', TokenType.End],
+	['if', TokenType.If],
+	['then', TokenType.Then],
+	['else', TokenType.Else],
+	['elseif', TokenType.ElseIf],
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {

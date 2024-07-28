@@ -1,4 +1,4 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block, If } from "../parsing";
 import { Error, ErrorType } from "../error";
 import { LiteralType, Token, TokenType } from "../scanning";
 import { Environment } from "./environment";
@@ -48,6 +48,8 @@ export class Evaluator {
 				return this.execVar(root as Var);
 			case StatementType.Block:
 				return this.execBlock(root as Block);
+			case StatementType.If:
+				return this.execIf(root as If);
 		}
 	}
 
@@ -86,6 +88,26 @@ export class Evaluator {
 			block.statements.forEach(stmt => this.exec(stmt));
 		} finally {
 			this.environment = prev;
+		}
+	}
+
+	// execIf
+	// 	Execute if statement
+	// 	@params:
+	// 		node - if node
+	// 	@returns:
+	execIf(node: If): Err<void> {
+		if (this.truthy(this.eval(node.condition))) {
+			return this.execBlock(node.thenBlock);
+		} else if (node.elseIfBlocks) {
+			const evalBlock = node.elseIfBlocks.find(elseIf => this.truthy(this.eval(elseIf.condition)))?.block;
+			if (evalBlock !== undefined) {
+				return this.execBlock(evalBlock);
+			}
+		} 
+		
+		if (node.elseBlock !== undefined) {
+			return this.execBlock(node.elseBlock);
 		}
 	}
 
@@ -160,10 +182,16 @@ export class Evaluator {
 				return left >= right
 			case TokenType.NotEquals:
 				return left !== right;
-			case TokenType.And:
-				return this.truthy(left) && this.truthy(right);
-			case TokenType.Or:
-				return this.truthy(left) || this.truthy(right);
+			default:
+				// and/or
+				const leftRes = this.eval(left);
+				if (node.op.tokenType === TokenType.Or) {
+					if (this.truthy(leftRes)) return leftRes;
+				} else {
+					if (!this.truthy(leftRes)) return leftRes;
+				}
+
+				return this.eval(right);
 		}
 
 		return 0; // never runs
