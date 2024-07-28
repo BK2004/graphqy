@@ -7,6 +7,7 @@ export enum StatementType {
 	Var,
 	Block,
 	If,
+	While,
 }
 
 export class Statement {
@@ -76,5 +77,17 @@ export class If extends Statement {
 		this.thenBlock = thenBlock;
 		this.elseIfBlocks = elseIfBlocks?.slice();
 		this.elseBlock = elseBlock;
+	}
+}
+
+export class While extends Statement {
+	condition: ASTNode;
+	body: Block;
+
+	constructor(condition: ASTNode, body: Block) {
+		super(StatementType.While);
+
+		this.condition = condition;
+		this.body = body;
 	}
 }

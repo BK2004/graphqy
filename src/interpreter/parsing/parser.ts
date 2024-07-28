@@ -1,6 +1,6 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If, While } from ".";
 
 type Err<T> = T
 
@@ -48,6 +48,17 @@ export class Parser {
 	// 	Tests for match between current token and token types. Nothing is consumed
 	test(...types: TokenType[]): boolean {
 		return types.includes(this.currentToken.tokenType);
+	}
+
+	// consume
+	// 	Consume next token, and error if it isn't tokenType
+	//	@params:
+	// 		tokenType - expected token type
+	// 	@returns:
+	consume(tokenType: TokenType): Err<void> {
+		if (this.next().tokenType !== tokenType) {
+			throw this.wrapError(new ErrorType.TokenExpected(tokenType));
+		}
 	}
 
 	// previous
@@ -106,12 +117,6 @@ export class Parser {
 			if (this.match(TokenType.Var, TokenType.Const)) {
 				return this.parseVarDeclaration();
 			}
-			if (this.match(TokenType.Block)) {
-				return this.parseBlock(TokenType.End);
-			}
-			if (this.match(TokenType.If)) {
-				return this.parseIf();
-			}
 
 			return this.parseStatement();
 		} catch (e: any) {
@@ -143,6 +148,22 @@ export class Parser {
 		return new Var(name, isConst, init);
 	}
 
+	// parseStatement
+	//	Parses next statement in program
+	// 	@params:
+	// 	@returns:
+	// 		Next statement or error if there is an error
+	parseStatement(): Err<Statement> {
+		if (this.match(TokenType.Print)) return this.parsePrint();
+		if (this.match(TokenType.Block)) return this.parseBlock(TokenType.End);
+		if (this.match(TokenType.If)) return this.parseIf();
+		if (this.match(TokenType.While)) return this.parseWhile();
+
+		const expr = this.parseExpression();
+		this.match(TokenType.Semicolon);
+		return new Expression(expr);
+	}
+
 	// parseBlock
 	//	Parses block of statements
 	// 	@params:
@@ -170,10 +191,8 @@ export class Parser {
 	// 	@returns:
 	// 		Parsed if statement
 	parseIf(): Err<If> {
-		const condition = this.parseEquality(0);
-		if (!this.match(TokenType.Then)) {
-			throw this.wrapError(new ErrorType.TokenExpected(TokenType.Then));
-		}
+		const condition = this.parseOr();
+		this.consume(TokenType.Then);
 
 		const thenBlock = this.parseBlock(TokenType.End, TokenType.Else, TokenType.ElseIf);
 
@@ -193,19 +212,6 @@ export class Parser {
 			this.previous().tokenType === TokenType.Else ? this.parseBlock(TokenType.End) : undefined);
 	}
 
-	// parseStatement
-	//	Parses next statement in program
-	// 	@params:
-	// 	@returns:
-	// 		Next statement or error if there is an error
-	parseStatement(): Err<Statement> {
-		if (this.match(TokenType.Print)) return this.parsePrint();
-
-		const expr = this.parseExpression();
-		this.match(TokenType.Semicolon);
-		return new Expression(expr);
-	}
-
 	// parsePrint
 	// 	Parses print statement
 	// 	@params:
@@ -214,6 +220,20 @@ export class Parser {
 	parsePrint(): Err<Print> {
 		const expr = this.parseEquality(0);
 		return new Print(expr);
+	}
+
+	// parseWhile
+	// 	Parses while loop
+	// 	@params:
+	// 	@returns:
+	// 		While statement
+	parseWhile(): Err<While> {
+		const condition = this.parseOr();
+		this.consume(TokenType.Do);
+
+		const body = this.parseBlock(TokenType.End);
+
+		return new While(condition, body);
 	}
 
 	// parseExpression
