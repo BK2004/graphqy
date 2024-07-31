@@ -1,4 +1,4 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block, If, While } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block, If, While, Repeat } from "../parsing";
 import { Error, ErrorType } from "../error";
 import { LiteralType, Token, TokenType } from "../scanning";
 import { Environment } from "./environment";
@@ -52,6 +52,8 @@ export class Evaluator {
 				return this.execIf(root as If);
 			case StatementType.While:
 				return this.execWhile(root as While);
+			case StatementType.Repeat:
+				return this.execDo(root as Repeat);
 		}
 	}
 
@@ -122,6 +124,17 @@ export class Evaluator {
 		while (this.truthy(this.eval(node.condition))) {
 			this.execBlock(node.body);
 		}
+	}
+
+	// execDo
+	// 	Execute do statement
+	// 	@params:
+	// 		node - do node
+	// 	@returns:
+	execDo(node: Repeat): Err<void> {
+		do {
+			this.execBlock(node.body);
+		} while (this.truthy(this.eval(node.condition)));
 	}
 
 	// eval

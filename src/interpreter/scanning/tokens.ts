@@ -34,6 +34,8 @@ export enum TokenType {
 	ElseIf = "elseif",
 	While = "while",
 	Do = "do",
+	Repeat = "repeat",
+	Until = "until",
 }
 
 export enum LiteralType {
@@ -115,7 +117,9 @@ const KEYWORD_TOKENS: [string, TokenType][] = [
 	['else', TokenType.Else],
 	['elseif', TokenType.ElseIf],
 	['while', TokenType.While],
-	['do', TokenType.Do]
+	['do', TokenType.Do],
+	['repeat', TokenType.Repeat],
+	['until', TokenType.Until],
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {

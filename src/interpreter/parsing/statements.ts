@@ -8,6 +8,7 @@ export enum StatementType {
 	Block,
 	If,
 	While,
+	Repeat,
 }
 
 export class Statement {
@@ -89,5 +90,17 @@ export class While extends Statement {
 
 		this.condition = condition;
 		this.body = body;
+	}
+}
+
+export class Repeat extends Statement {
+	body: Block;
+	condition: ASTNode;
+
+	constructor(body: Block, condition: ASTNode) {
+		super(StatementType.Repeat)
+
+		this.body = body;
+		this.condition = condition;
 	}
 }

@@ -1,6 +1,6 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If, While } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If, While, Repeat } from ".";
 
 type Err<T> = T
 
@@ -84,6 +84,8 @@ export class Parser {
 				case TokenType.Var:
 				case TokenType.Const:
 				case TokenType.Print:
+				case TokenType.While:
+				case TokenType.Repeat:
 					return;
 			}
 
@@ -120,6 +122,7 @@ export class Parser {
 
 			return this.parseStatement();
 		} catch (e: any) {
+			console.log((e as Error).fmtString())
 			this.synchronize();
 		}
 	}
@@ -158,6 +161,7 @@ export class Parser {
 		if (this.match(TokenType.Block)) return this.parseBlock(TokenType.End);
 		if (this.match(TokenType.If)) return this.parseIf();
 		if (this.match(TokenType.While)) return this.parseWhile();
+		if (this.match(TokenType.Repeat)) return this.parseRepeat();
 
 		const expr = this.parseExpression();
 		this.match(TokenType.Semicolon);
@@ -234,6 +238,19 @@ export class Parser {
 		const body = this.parseBlock(TokenType.End);
 
 		return new While(condition, body);
+	}
+
+	// parseRepeat
+	// 	Parses repeat ... until loop
+	// 	@params:
+	// 	@returns:
+	// 		do statement
+	parseRepeat(): Err<Repeat> {
+		const body = this.parseBlock(TokenType.Until);
+		const condition = this.parseOr();
+
+		this.match(TokenType.Semicolon);
+		return new Repeat(body, condition);
 	}
 
 	// parseExpression
