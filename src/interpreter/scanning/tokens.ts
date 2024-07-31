@@ -36,6 +36,8 @@ export enum TokenType {
 	Do = "do",
 	Repeat = "repeat",
 	Until = "until",
+	Break = "break",
+	Continue = "continue",
 }
 
 export enum LiteralType {
@@ -120,6 +122,8 @@ const KEYWORD_TOKENS: [string, TokenType][] = [
 	['do', TokenType.Do],
 	['repeat', TokenType.Repeat],
 	['until', TokenType.Until],
+	['break', TokenType.Break],
+	['continue', TokenType.Continue],
 ]
 
 export const RL_ASSOCIATIVE_TOKENS = {

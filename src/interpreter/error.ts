@@ -94,5 +94,10 @@ export const ErrorType = {
 		constructor(name: string) {
 			super("CONST_VAR", `Variable ${name} is constant and can't be reassigned`)
 		}
+	},
+	InvalidLoopControl: class extends Error {
+		constructor(controlType: TokenType) {
+			super("BAD_BREAK", `Bad use of ${controlType === TokenType.Break ? "break" : "continue"}`)
+		}
 	}
 }

@@ -1,13 +1,17 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block, If, While, Repeat } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block, If, While, Repeat, LoopControl } from "../parsing";
 import { Error, ErrorType } from "../error";
 import { LiteralType, Token, TokenType } from "../scanning";
-import { Environment } from "./environment";
+import { Environment, EnvStateType } from "./environment";
 
 type Err<T> = Error | T
 
 export class Evaluator {
 	parser: Parser;
 	environment: Environment;
+	flags = {
+		break: false,
+		continue: false,
+	}
 	
 	constructor(parser: Parser) {
 		this.parser = parser;
@@ -39,6 +43,8 @@ export class Evaluator {
 	// 	@returns:
 	//		Result of executed AST
 	exec(root: Statement): Err<any> {
+		if (this.flags.break || this.flags.continue) return;
+
 		switch (root.statementType) {
 			case StatementType.Expression:
 				return this.eval((root as Expression).expr);
@@ -54,6 +60,8 @@ export class Evaluator {
 				return this.execWhile(root as While);
 			case StatementType.Repeat:
 				return this.execDo(root as Repeat);
+			case StatementType.LoopControl:
+				return this.execLoopControl(root as LoopControl);
 		}
 	}
 
@@ -82,12 +90,12 @@ export class Evaluator {
 	// 	@params:
 	// 		block - Block node
 	// 	@returns:
-	execBlock(block: Block): Err<void> {
+	execBlock(block: Block, invokingState?: EnvStateType): Err<void> {
 		// create new environment enclosed by previous
 		const prev = this.environment;
 
 		try {
-			this.environment = new Environment(prev);
+			this.environment = new Environment(prev, invokingState);
 
 			block.statements.forEach(stmt => this.exec(stmt));
 		} finally {
@@ -121,9 +129,12 @@ export class Evaluator {
 	// 		node - while node
 	// 	@returns:
 	execWhile(node: While): Err<void> {
-		while (this.truthy(this.eval(node.condition))) {
-			this.execBlock(node.body);
+		while (!this.flags.break && this.truthy(this.eval(node.condition))) {
+			this.execBlock(node.body, EnvStateType.LOOP);
+			this.flags.continue = false;
 		}
+
+		this.flags.break = false;
 	}
 
 	// execDo
@@ -133,8 +144,27 @@ export class Evaluator {
 	// 	@returns:
 	execDo(node: Repeat): Err<void> {
 		do {
-			this.execBlock(node.body);
-		} while (this.truthy(this.eval(node.condition)));
+			this.execBlock(node.body, EnvStateType.LOOP);
+			this.flags.continue = false;
+		} while (!this.flags.break && !this.truthy(this.eval(node.condition)));
+
+		this.flags.break = false;
+	}
+
+	// execLoopControl
+	// 	Execute loop control statement
+	// 	@params:
+	// 		node - loop control node
+	// 	@returns:
+	execLoopControl(node: LoopControl): Err<void> {
+		if (this.environment.state !== EnvStateType.LOOP) {
+			this.runtimeError(new ErrorType.InvalidLoopControl(node.control.tokenType), node.control.line, node.control.column);
+		}
+
+		if (node.control.tokenType === TokenType.Break)
+			this.flags.break = true;
+		else
+			this.flags.continue = true;
 	}
 
 	// eval

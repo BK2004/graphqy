@@ -1,4 +1,4 @@
-import { Literal } from "../scanning";
+import { Literal, Token } from "../scanning";
 import { ASTNode } from "./astnodes";
 
 export enum StatementType {
@@ -9,6 +9,7 @@ export enum StatementType {
 	If,
 	While,
 	Repeat,
+	LoopControl
 }
 
 export class Statement {
@@ -102,5 +103,15 @@ export class Repeat extends Statement {
 
 		this.body = body;
 		this.condition = condition;
+	}
+}
+
+export class LoopControl extends Statement {
+	control: Token;
+
+	constructor(control: Token) {
+		super(StatementType.LoopControl);
+		
+		this.control = control;
 	}
 }

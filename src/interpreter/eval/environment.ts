@@ -6,13 +6,21 @@ type VarData = {
 }
 type Err<T> = Error | T
 
+export enum EnvStateType {
+	LOOP = "loop",
+	FUNCTION = "function",
+}
+
 export class Environment {
 	values: Map<string, VarData>;
+	state?: EnvStateType;
 	enclosing?: Environment;
 
-	constructor(enclosing?: Environment) {
+	constructor(enclosing?: Environment, state?: EnvStateType) {
 		this.values = new Map();
 		this.enclosing = enclosing;
+		if (!state && enclosing) this.state = enclosing.state
+		else this.state = state
 	}
 
 	// get

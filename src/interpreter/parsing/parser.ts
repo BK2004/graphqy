@@ -1,6 +1,6 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If, While, Repeat } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If, While, Repeat, LoopControl } from ".";
 
 type Err<T> = T
 
@@ -8,11 +8,13 @@ export class Parser {
 	scanner: Scanner;
 	currentToken: Token;
 	prevToken: Token;
+	loopControl: boolean;
 
 	constructor(scanner: Scanner) {
 		this.scanner = scanner;
 		this.currentToken = new Token(TokenType.EOF, 0, 0);
 		this.prevToken = new Token(TokenType.EOF, 0, 0);
+		this.loopControl = false;
 
 		const err = this.scanner.scanTokens();
 		if (err) throw err;
@@ -86,6 +88,7 @@ export class Parser {
 				case TokenType.Print:
 				case TokenType.While:
 				case TokenType.Repeat:
+				case TokenType.Break:
 					return;
 			}
 
@@ -162,6 +165,7 @@ export class Parser {
 		if (this.match(TokenType.If)) return this.parseIf();
 		if (this.match(TokenType.While)) return this.parseWhile();
 		if (this.match(TokenType.Repeat)) return this.parseRepeat();
+		if (this.match(TokenType.Break, TokenType.Continue)) return this.parseLoopControl();
 
 		const expr = this.parseExpression();
 		this.match(TokenType.Semicolon);
@@ -235,7 +239,7 @@ export class Parser {
 		const condition = this.parseOr();
 		this.consume(TokenType.Do);
 
-		const body = this.parseBlock(TokenType.End);
+		const body = this.wrapLoop(this.parseBlock, TokenType.End);
 
 		return new While(condition, body);
 	}
@@ -246,11 +250,40 @@ export class Parser {
 	// 	@returns:
 	// 		do statement
 	parseRepeat(): Err<Repeat> {
-		const body = this.parseBlock(TokenType.Until);
+		const body = this.wrapLoop(this.parseBlock, TokenType.Until);
 		const condition = this.parseOr();
 
 		this.match(TokenType.Semicolon);
 		return new Repeat(body, condition);
+	}
+
+	// parseBreak
+	// 	Parses break statement
+	// 	@params:
+	// 	@returns:
+	// 		Break statement
+	parseLoopControl(): Err<Statement> {
+		console.log(this.previous());
+		if (!this.loopControl) {
+			// not in a valid block to break
+			throw this.wrapError(new ErrorType.InvalidLoopControl(this.previous().tokenType))
+		}
+
+		return new LoopControl(this.previous());
+	}
+
+	// wrapLoop
+	// 	Wraps func call with loop controls
+	// 	@params:
+	// 		func - function to call
+	// 		args - arguments passed to function
+	// 	@returns:
+	// 		result of func
+	wrapLoop<T>(func: (...args: any[]) => T, ...args: any[]): T {
+		this.loopControl = true;
+		const res = func.call(this, ...args);
+		this.loopControl = false;
+		return res;
 	}
 
 	// parseExpression
