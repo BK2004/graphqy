@@ -99,5 +99,15 @@ export const ErrorType = {
 		constructor(controlType: TokenType) {
 			super("BAD_BREAK", `Bad use of ${controlType === TokenType.Break ? "break" : "continue"}`)
 		}
+	},
+	TooManyArgs: class extends Error {
+		constructor(limit: number) {
+			super("MAX_ARGS", `Reached max arg limit - ${limit}`)
+		}
+	},
+	NotCallable: class extends Error {
+		constructor() {
+			super("NOT_FUNC", `Expression is not callable`)
+		}
 	}
 }

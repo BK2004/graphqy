@@ -1,8 +1,10 @@
 import { Scanner, Token, TokenType, Literal, LiteralType, OPERATOR_PRECEDENCE, RL_ASSOCIATIVE_TOKENS, UNARY_TOKENS } from "../scanning";
 import { Error, ErrorType } from "../error";
-import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Print, Expression, Var, Assignment, Block, If, While, Repeat, LoopControl } from ".";
+import { ASTLiteral, BinaryOp, ASTNode, UnaryOp, Statement, Expression, Var, Assignment, Block, If, While, Repeat, LoopControl, Call } from ".";
 
 type Err<T> = T
+
+export const MAX_ARG_C = 2 ** 8;
 
 export class Parser {
 	scanner: Scanner;
@@ -85,7 +87,6 @@ export class Parser {
 			switch (this.currentToken.tokenType) {
 				case TokenType.Var:
 				case TokenType.Const:
-				case TokenType.Print:
 				case TokenType.While:
 				case TokenType.Repeat:
 				case TokenType.Break:
@@ -160,7 +161,6 @@ export class Parser {
 	// 	@returns:
 	// 		Next statement or error if there is an error
 	parseStatement(): Err<Statement> {
-		if (this.match(TokenType.Print)) return this.parsePrint();
 		if (this.match(TokenType.Block)) return this.parseBlock(TokenType.End);
 		if (this.match(TokenType.If)) return this.parseIf();
 		if (this.match(TokenType.While)) return this.parseWhile();
@@ -218,16 +218,6 @@ export class Parser {
 
 		return new If(condition, thenBlock, elseIfBlocks,
 			this.previous().tokenType === TokenType.Else ? this.parseBlock(TokenType.End) : undefined);
-	}
-
-	// parsePrint
-	// 	Parses print statement
-	// 	@params:
-	// 	@returns:
-	// 		Print statement node
-	parsePrint(): Err<Print> {
-		const expr = this.parseEquality(0);
-		return new Print(expr);
 	}
 
 	// parseWhile
@@ -381,13 +371,34 @@ export class Parser {
 		return left;
 	}
 
+	// parseArgs
+	// 	Parses comma-delimited expressions
+	// 	@params:
+	// 	@returns:
+	// 		List of expressions as ASTNodes
+	parseArgs(): Err<ASTNode[]> {
+		const out = [];
+
+		while (!this.test(TokenType.RightParen) && this.currentToken.tokenType !== TokenType.EOF) {
+			const arg = this.parseOr();
+
+			out.push(arg);
+			if (out.length >= MAX_ARG_C) throw this.wrapError(new ErrorType.TooManyArgs(MAX_ARG_C));
+			this.match(TokenType.Comma);
+		}
+
+		this.consume(TokenType.RightParen);
+
+		return out;
+	}
+
 	// parseTerminalNode
 	// 	Parses terminal node, i.e., a node with a direct value
 	// 	@params:
 	// 	@returns:
 	// 		Terminal node if it is current token, otherwise error
 	parseTerminalNode(): Err<ASTNode> {
-		if (this.match(TokenType.Literal, TokenType.LeftParen, TokenType.True, TokenType.False)) {
+		if (this.match(TokenType.LeftParen, TokenType.True, TokenType.False)) {
 			switch (this.previous().tokenType) {
 				case TokenType.LeftParen:
 					const res = this.parseEquality(0);
@@ -401,9 +412,6 @@ export class Parser {
 					return new ASTLiteral(LiteralType.Boolean, true, this.previous().line, this.previous().column);
 				case TokenType.False:
 					return new ASTLiteral(LiteralType.Boolean, false, this.previous().line, this.previous().column);
-				default:
-					// current token is a literal, treat it as such
-					return new ASTLiteral((this.previous() as Literal).literalType, this.previous().value!, this.previous().line, this.previous().column)
 			}
 		}
 		// If a unary operator, parse terminal node to the right
@@ -413,9 +421,31 @@ export class Parser {
 			
 			return new UnaryOp(token, res);
 		}
-		else {
-			throw this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
+		// Parse a literal
+		else if (this.match(TokenType.Literal)) {
+			if ((this.prevToken as unknown as ASTLiteral).literalType === LiteralType.Identifier) {
+				var lhs: ASTNode = new ASTLiteral((this.prevToken as Literal).literalType, (this.prevToken as Literal).value!,
+					this.prevToken.line, this.prevToken.column);
+				
+				while (true) {
+					if (this.match(TokenType.LeftParen)) {
+						const line = this.prevToken.line;
+						const column = this.prevToken.column;
+						lhs = new Call(lhs, this.parseArgs(), line, column);
+					} else {
+						break;
+					}
+				}
+				
+				return lhs;
+			} else {
+				// current token is a literal, treat it as such
+				return new ASTLiteral((this.previous() as Literal).literalType,
+					this.previous().value!, this.previous().line, this.previous().column)
+			}
 		}
+
+		throw this.wrapError(new ErrorType.ExpectedTerminal(this.currentToken.tokenType));
 	}
 
 	// getPrecedence

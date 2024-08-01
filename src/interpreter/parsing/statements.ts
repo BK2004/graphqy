@@ -2,14 +2,13 @@ import { Literal, Token } from "../scanning";
 import { ASTNode } from "./astnodes";
 
 export enum StatementType {
-	Print,
 	Expression,
 	Var,
 	Block,
 	If,
 	While,
 	Repeat,
-	LoopControl
+	LoopControl,
 }
 
 export class Statement {
@@ -25,15 +24,6 @@ export class Expression extends Statement {
 
 	constructor(expr: ASTNode) {
 		super(StatementType.Expression);
-		this.expr = expr;
-	}
-}
-
-export class Print extends Statement {
-	expr: ASTNode;
-
-	constructor(expr: ASTNode) {
-		super(StatementType.Print);
 		this.expr = expr;
 	}
 }

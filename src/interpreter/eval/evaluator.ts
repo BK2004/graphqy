@@ -1,7 +1,9 @@
-import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Print, Var, Assignment, Block, If, While, Repeat, LoopControl } from "../parsing";
+import { Parser, ASTLiteral, ASTNode, ASTNodeType, BinaryOp, UnaryOp, Statement, StatementType, Expression, Var, Assignment, Block, If, While, Repeat, LoopControl, Call } from "../parsing";
 import { Error, ErrorType } from "../error";
 import { LiteralType, Token, TokenType } from "../scanning";
 import { Environment, EnvStateType } from "./environment";
+import { Function } from "./dataTypes";
+import { Globals } from "./globals";
 
 type Err<T> = Error | T
 
@@ -15,7 +17,9 @@ export class Evaluator {
 	
 	constructor(parser: Parser) {
 		this.parser = parser;
-		this.environment = new Environment();
+		const global = new Environment();
+		Globals.defineNatives(global);
+		this.environment = global;
 	}
 
 	// interpret
@@ -48,8 +52,6 @@ export class Evaluator {
 		switch (root.statementType) {
 			case StatementType.Expression:
 				return this.eval((root as Expression).expr);
-			case StatementType.Print:
-				return this.execPrint(root as Print);
 			case StatementType.Var:
 				return this.execVar(root as Var);
 			case StatementType.Block:
@@ -63,15 +65,6 @@ export class Evaluator {
 			case StatementType.LoopControl:
 				return this.execLoopControl(root as LoopControl);
 		}
-	}
-
-	// execPrint
-	//	Execute print
-	// 	@params:
-	// 		print - Print node
-	// 	@returns:
-	execPrint(print: Print): Err<void> {
-		console.log(this.eval(print.expr));
 	}
 
 	// execVar
@@ -188,6 +181,8 @@ export class Evaluator {
 					return res;
 				}
 				return (root as ASTLiteral).value;
+			case ASTNodeType.Call:
+				return this.evalCall(root as Call);
 		}
 	}
 
@@ -282,6 +277,26 @@ export class Evaluator {
 			this.eval((assignment as Assignment).rhs));
 		if (res instanceof Error)
 			this.runtimeError(res, assignment.line, assignment.column);
+	}
+
+	// evalCall
+	// 	Evaluates call expression
+	// 	@params:
+	// 		node - call node
+	// 	@returns:
+	evalCall(node: Call): Err<void> {
+		const callee = this.eval(node.callee);
+
+		const args: any[] = [];
+		node.args.forEach(a => args.push(this.eval(a)))
+
+		if (!(callee instanceof Function)) {
+			this.runtimeError(new ErrorType.NotCallable(), node.line, node.column)
+		}
+
+		if ((callee as Function).native) {
+			return (callee as Function).nativeFunction!(...args);
+		}
 	}
 
 	// ensureArithmeticOperands

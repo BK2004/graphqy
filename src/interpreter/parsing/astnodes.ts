@@ -5,6 +5,7 @@ export enum ASTNodeType {
 	BinaryOp,
 	UnaryOp,
 	Assignment,
+	Call,
 }
 
 export class ASTNode {
@@ -65,6 +66,22 @@ export class Assignment extends ASTNode {
 		super(ASTNodeType.Assignment);
 		this.lhs = lhs;
 		this.rhs = rhs;
+		this.line = line;
+		this.column = column;
+	}
+}
+
+export class Call extends ASTNode {
+	callee: ASTNode;
+	args: ASTNode[];
+	line?: number;
+	column?: number;
+
+	constructor(callee: ASTNode, args: ASTNode[], line?: number, column?: number) {
+		super(ASTNodeType.Call);
+
+		this.callee = callee;
+		this.args = args;
 		this.line = line;
 		this.column = column;
 	}
